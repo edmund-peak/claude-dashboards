@@ -1,0 +1,20 @@
+# --- CellRD runtime state (NEVER commit; these are generated at run time) ---
+cellrd/data.json
+cellrd/data_stable.json
+cellrd/metadata.json
+cellrd/*.json.tmp
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

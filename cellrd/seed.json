@@ -1,0 +1,5859 @@
+{
+  "chambers": [
+    {
+      "name": "Chamber_1",
+      "temp": "25\u00b0C",
+      "category": "Standard Testing",
+      "channels": [
+        {
+          "number": 1,
+          "channelId": "R04-T01-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0292",
+          "analysisGroup": "V4 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 2,
+          "channelId": "R04-T01-CH02",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0293",
+          "analysisGroup": "V4 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 3,
+          "channelId": "R04-T01-CH03",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0295",
+          "analysisGroup": "V4 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 4,
+          "channelId": "R04-T01-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0039",
+          "analysisGroup": "HSCHC (Ingevity)",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 5,
+          "channelId": "R04-T01-CH05",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0040",
+          "analysisGroup": "HSCHC (Ingevity)",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 6,
+          "channelId": "R04-T01-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0047",
+          "analysisGroup": "HSCHC (Ingevity)",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 7,
+          "channelId": "R04-T01-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0052",
+          "analysisGroup": "HSCHC (BSG 400)",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 8,
+          "channelId": "R04-T01-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0059",
+          "analysisGroup": "HSCHC (BSG 400)",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 9,
+          "channelId": "R04-T02-CH01",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 10,
+          "channelId": "R04-T02-CH02",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 11,
+          "channelId": "R04-T02-CH03",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 12,
+          "channelId": "R04-T02-CH04",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 13,
+          "channelId": "R04-T02-CH05",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 14,
+          "channelId": "R04-T02-CH06",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 15,
+          "channelId": "R04-T02-CH07",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 16,
+          "channelId": "R04-T02-CH08",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 17,
+          "channelId": "R04-T03-CH01",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 18,
+          "channelId": "R04-T03-CH02",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 19,
+          "channelId": "R04-T03-CH03",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 20,
+          "channelId": "R04-T03-CH04",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 21,
+          "channelId": "R04-T03-CH05",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 22,
+          "channelId": "R04-T03-CH06",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 23,
+          "channelId": "R04-T03-CH07",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 24,
+          "channelId": "R04-T03-CH08",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 25,
+          "channelId": "R04-T04-CH01",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 26,
+          "channelId": "R04-T04-CH02",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 27,
+          "channelId": "R04-T04-CH03",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 28,
+          "channelId": "R04-T04-CH04",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 29,
+          "channelId": "R04-T04-CH05",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 30,
+          "channelId": "R04-T04-CH06",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        }
+      ]
+    },
+    {
+      "name": "Chamber_2",
+      "temp": "60\u00b0C",
+      "category": "Standard Testing",
+      "channels": [
+        {
+          "number": 1,
+          "channelId": "R02-T03-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_04_CID0025",
+          "analysisGroup": "Delfort separator",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 2,
+          "channelId": "R02-T03-CH02",
+          "purpose": "Flex",
+          "cellId": "CRD_04_CID0026",
+          "analysisGroup": "Delfort separator",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 3,
+          "channelId": "R02-T03-CH03",
+          "purpose": "Flex",
+          "cellId": "CRD_04_CID0027",
+          "analysisGroup": "Delfort separator",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 4,
+          "channelId": "R02-T03-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_04_CID0028",
+          "analysisGroup": "Delfort separator",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 5,
+          "channelId": "R02-T03-CH05",
+          "purpose": "Flex",
+          "cellId": "CRD_04_CID0029",
+          "analysisGroup": "Delfort separator",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 6,
+          "channelId": "R02-T03-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_04_CID0030",
+          "analysisGroup": "Delfort separator",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 7,
+          "channelId": "R02-T03-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_04_CID0031",
+          "analysisGroup": "Delfort separator",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 8,
+          "channelId": "R02-T03-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_04_CID0032",
+          "analysisGroup": "Delfort separator",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 9,
+          "channelId": "R02-T04-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0001",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 10,
+          "channelId": "R02-T04-CH02",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0002",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 11,
+          "channelId": "R02-T04-CH03",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0003",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 12,
+          "channelId": "R02-T04-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0004",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 13,
+          "channelId": "R02-T04-CH05",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0220",
+          "analysisGroup": "V3 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 14,
+          "channelId": "R02-T04-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0221",
+          "analysisGroup": "V3 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 15,
+          "channelId": "R02-T04-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0223",
+          "analysisGroup": "V3 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 16,
+          "channelId": "R02-T04-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0005",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 17,
+          "channelId": "R02-T05-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0006",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 18,
+          "channelId": "R02-T05-CH02",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0007",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 19,
+          "channelId": "R02-T05-CH03",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0008",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 20,
+          "channelId": "R02-T05-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0009",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 21,
+          "channelId": "R02-T05-CH05",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0010",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 22,
+          "channelId": "R02-T05-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_14_CID0005",
+          "analysisGroup": "HMW PVDF Study",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 23,
+          "channelId": "R02-T05-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_14_CID0006",
+          "analysisGroup": "HMW PVDF Study",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 24,
+          "channelId": "R02-T05-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_14_CID0007",
+          "analysisGroup": "HMW PVDF Study",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        }
+      ]
+    },
+    {
+      "name": "Chamber_3",
+      "temp": "45\u00b0C",
+      "category": "Standard Testing",
+      "channels": [
+        {
+          "number": 1,
+          "channelId": "R02-T06-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_03_CID0061",
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 2,
+          "channelId": "R02-T06-CH02",
+          "purpose": "Flex",
+          "cellId": "CRD_03_CID0062",
+          "analysisGroup": null,
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 3,
+          "channelId": "R02-T06-CH03",
+          "purpose": "Flex",
+          "cellId": "CRD_03_CID0063",
+          "analysisGroup": null,
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 4,
+          "channelId": "R02-T06-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_03_CID0064",
+          "analysisGroup": null,
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 5,
+          "channelId": "R02-T06-CH05",
+          "purpose": "Flex",
+          "cellId": "CRD_03_CID0065",
+          "analysisGroup": null,
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 6,
+          "channelId": "R02-T06-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_03_CID0066",
+          "analysisGroup": null,
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 7,
+          "channelId": "R02-T06-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_03_CID0067",
+          "analysisGroup": null,
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 8,
+          "channelId": "R02-T06-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0181",
+          "analysisGroup": "Baseline V2?",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 9,
+          "channelId": "R02-T07-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0182",
+          "analysisGroup": "Baseline V2?",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 10,
+          "channelId": "R02-T07-CH02",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0183",
+          "analysisGroup": "Baseline V2?",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 11,
+          "channelId": "R02-T07-CH03",
+          "purpose": "Flex",
+          "cellId": "CRD_03_CID0068",
+          "analysisGroup": null,
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 12,
+          "channelId": "R02-T07-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_03_CID0069",
+          "analysisGroup": null,
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 13,
+          "channelId": "R02-T07-CH05",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0019",
+          "analysisGroup": "BSG + GT01",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 14,
+          "channelId": "R02-T07-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0020",
+          "analysisGroup": "BSG + GT01",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 15,
+          "channelId": "R02-T07-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0060",
+          "analysisGroup": "HSCHC (BSG 400)",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 16,
+          "channelId": "R02-T07-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0022",
+          "analysisGroup": "BSG + GT01",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 17,
+          "channelId": "R02-T08-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0023",
+          "analysisGroup": "Kuraray + GT01",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 18,
+          "channelId": "R02-T08-CH02",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0024",
+          "analysisGroup": "Kuraray + GT01",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 19,
+          "channelId": "R02-T08-CH03",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0025",
+          "analysisGroup": "Kuraray + GT01",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 20,
+          "channelId": "R02-T08-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0026",
+          "analysisGroup": "Kuraray + GT01",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 21,
+          "channelId": "R02-T08-CH05",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0027",
+          "analysisGroup": "Ingevity + GT01",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 22,
+          "channelId": "R02-T08-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0053",
+          "analysisGroup": "HSCHC (BSG 400)",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 23,
+          "channelId": "R02-T08-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0054",
+          "analysisGroup": "HSCHC (BSG 400)",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 24,
+          "channelId": "R02-T08-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0061",
+          "analysisGroup": "HSCHC (BSG 400)",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        }
+      ]
+    },
+    {
+      "name": "Chamber_4",
+      "temp": "60\u00b0C",
+      "category": "Standard Testing",
+      "channels": [
+        {
+          "number": 1,
+          "channelId": "R02-T09-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0011",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 2,
+          "channelId": "R02-T09-CH02",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0012",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 3,
+          "channelId": "R02-T09-CH03",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0013",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 4,
+          "channelId": "R02-T09-CH04",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 5,
+          "channelId": "R02-T09-CH05",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 6,
+          "channelId": "R02-T09-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_12_CID0023",
+          "analysisGroup": "Thick electrode",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 7,
+          "channelId": "R02-T09-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_12_CID0024",
+          "analysisGroup": "Thick electrode",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 8,
+          "channelId": "R02-T09-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_12_CID0025",
+          "analysisGroup": "Thick electrode",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 9,
+          "channelId": "R01-T09-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0014",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 10,
+          "channelId": "R01-T09-CH02",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0015",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 11,
+          "channelId": "R01-T09-CH03",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0016",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 12,
+          "channelId": "R01-T09-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0017",
+          "analysisGroup": "NFPP Compaction",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 13,
+          "channelId": "R01-T09-CH05",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 14,
+          "channelId": "R01-T09-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_08_CID0019",
+          "analysisGroup": "Aqueous NFPP",
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 15,
+          "channelId": "R01-T09-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_08_CID0020",
+          "analysisGroup": "Aqueous NFPP",
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 16,
+          "channelId": "R01-T09-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_12_CID003",
+          "analysisGroup": "Thick electrode",
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 17,
+          "channelId": "R01-T10-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_12_CID004",
+          "analysisGroup": "Thick electrode",
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 18,
+          "channelId": "R01-T10-CH02",
+          "purpose": "Flex",
+          "cellId": "CRD_12_CID005",
+          "analysisGroup": "Thick electrode",
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 19,
+          "channelId": "R01-T10-CH03",
+          "purpose": "Flex",
+          "cellId": "CRD_12_CID009",
+          "analysisGroup": "Thick electrode",
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 20,
+          "channelId": "R01-T10-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_12_CID010",
+          "analysisGroup": "Thick electrode",
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 21,
+          "channelId": "R01-T10-CH05",
+          "purpose": "Flex",
+          "cellId": "CRD_12_CID011",
+          "analysisGroup": "Thick electrode",
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 22,
+          "channelId": "R01-T10-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_12_CID015",
+          "analysisGroup": "Thick electrode",
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 23,
+          "channelId": "R01-T10-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_12_CID016",
+          "analysisGroup": "Thick electrode",
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 24,
+          "channelId": "R01-T10-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_12_CID018",
+          "analysisGroup": "Thick electrode",
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        }
+      ]
+    },
+    {
+      "name": "Chamber_5",
+      "temp": "60\u00b0C",
+      "category": "Standard Testing",
+      "channels": [
+        {
+          "number": 1,
+          "channelId": "R01-T06-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_16_CID004",
+          "analysisGroup": "Ronbay Litan",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 2,
+          "channelId": "R01-T06-CH02",
+          "purpose": "Flex",
+          "cellId": "CRD_16_CID005",
+          "analysisGroup": "Ronbay Litan",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 3,
+          "channelId": "R01-T06-CH03",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 4,
+          "channelId": "R01-T06-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0190",
+          "analysisGroup": "V3 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 5,
+          "channelId": "R01-T06-CH05",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0191",
+          "analysisGroup": "V3 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 6,
+          "channelId": "R01-T06-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0192",
+          "analysisGroup": "V3 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 7,
+          "channelId": "R01-T06-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0193",
+          "analysisGroup": "V3 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 8,
+          "channelId": "R01-T06-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0194",
+          "analysisGroup": "V3 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 9,
+          "channelId": "R01-T07-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0195",
+          "analysisGroup": "V3 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 10,
+          "channelId": "R01-T07-CH02",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0196",
+          "analysisGroup": "V3 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 11,
+          "channelId": "R01-T07-CH03",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0197",
+          "analysisGroup": "V3 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 12,
+          "channelId": "R01-T07-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0198",
+          "analysisGroup": "V3 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 13,
+          "channelId": "R01-T07-CH05",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0202",
+          "analysisGroup": "V3 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 14,
+          "channelId": "R01-T07-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0018",
+          "analysisGroup": "High Voltage Cathode",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 15,
+          "channelId": "R01-T07-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0019",
+          "analysisGroup": "High Voltage Cathode",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 16,
+          "channelId": "R01-T07-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0299",
+          "analysisGroup": "V4 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 17,
+          "channelId": "R01-T08-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0300",
+          "analysisGroup": "V4 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 18,
+          "channelId": "R01-T08-CH02",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0302",
+          "analysisGroup": "V4 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 19,
+          "channelId": "R01-T08-CH03",
+          "purpose": "Flex",
+          "cellId": "CRD_16_CID040",
+          "analysisGroup": "Ronbay Litan",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 20,
+          "channelId": "R01-T08-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_16_CID043",
+          "analysisGroup": "Ronbay Litan",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 21,
+          "channelId": "R01-T08-CH05",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID_0186",
+          "analysisGroup": "V3 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 22,
+          "channelId": "R01-T08-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID_0187",
+          "analysisGroup": "V3 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 23,
+          "channelId": "R01-T08-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0020",
+          "analysisGroup": "High Voltage Cathode",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 24,
+          "channelId": "R01-T08-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_15_CID0021",
+          "analysisGroup": "High Voltage Cathode",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        }
+      ]
+    },
+    {
+      "name": "Chamber_6",
+      "temp": "45\u00b0C",
+      "category": "Standard Testing",
+      "channels": [
+        {
+          "number": 1,
+          "channelId": "R01-T03-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0132",
+          "analysisGroup": "Baseline V2?",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 2,
+          "channelId": "R01-T03-CH02",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0135",
+          "analysisGroup": "Baseline V2?",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 3,
+          "channelId": "R01-T03-CH03",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0136",
+          "analysisGroup": "Baseline V2?",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 4,
+          "channelId": "R01-T03-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0129",
+          "analysisGroup": "Baseline V2?",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 5,
+          "channelId": "R01-T03-CH05",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0130",
+          "analysisGroup": "Baseline V2?",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 6,
+          "channelId": "R01-T03-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0131",
+          "analysisGroup": "Baseline V2?",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 7,
+          "channelId": "R01-T03-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0296",
+          "analysisGroup": "V4 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 8,
+          "channelId": "R01-T03-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0297",
+          "analysisGroup": "V4 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 9,
+          "channelId": "R01-T04-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0298",
+          "analysisGroup": "V4 Baseline",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 10,
+          "channelId": "R01-T04-CH02",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0041",
+          "analysisGroup": "HSCHC (Ingevity)",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 11,
+          "channelId": "R01-T04-CH03",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0042",
+          "analysisGroup": "HSCHC (Ingevity)",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 12,
+          "channelId": "R01-T04-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0048",
+          "analysisGroup": "HSCHC (Ingevity)",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 13,
+          "channelId": "R01-T04-CH05",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0007",
+          "analysisGroup": "Ingevity + GE",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 14,
+          "channelId": "R01-T04-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0009",
+          "analysisGroup": "Ingevity + GE",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 15,
+          "channelId": "R01-T04-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0010",
+          "analysisGroup": "Ingevity + GE",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 16,
+          "channelId": "R01-T04-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0011",
+          "analysisGroup": "HighChem + GE",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 17,
+          "channelId": "R01-T05-CH01",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0012",
+          "analysisGroup": "HighChem + GE",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 18,
+          "channelId": "R01-T05-CH02",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": null
+        },
+        {
+          "number": 19,
+          "channelId": "R01-T05-CH03",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0049",
+          "analysisGroup": "HSCHC (Ingevity)",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 20,
+          "channelId": "R01-T05-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0028",
+          "analysisGroup": "Ingevity + GT01",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 21,
+          "channelId": "R01-T05-CH05",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0029",
+          "analysisGroup": "Ingevity + GT01",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 22,
+          "channelId": "R01-T05-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0030",
+          "analysisGroup": "Ingevity + GT01",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 23,
+          "channelId": "R01-T05-CH07",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0031",
+          "analysisGroup": "HighChem + GT01",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 24,
+          "channelId": "R01-T05-CH08",
+          "purpose": "Flex",
+          "cellId": "CRD_05_CID0032",
+          "analysisGroup": "HighChem + GT01",
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        }
+      ]
+    },
+    {
+      "name": "Chamber_7",
+      "temp": "45\u00b0C",
+      "category": "Miscellaneous",
+      "channels": [
+        {
+          "number": 1,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 2,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 3,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 4,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 5,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 6,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 7,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 8,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 9,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 10,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 11,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 12,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 13,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 14,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 15,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 16,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        }
+      ]
+    },
+    {
+      "name": "Chamber_8",
+      "temp": "45\u00b0C",
+      "category": "Formation",
+      "channels": [
+        {
+          "number": 1,
+          "channelId": "R03-T07-CH01",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 2,
+          "channelId": "R03-T07-CH02",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 3,
+          "channelId": "R03-T07-CH03",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 4,
+          "channelId": "R03-T07-CH04",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 5,
+          "channelId": "R03-T07-CH05",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 6,
+          "channelId": "R03-T07-CH06",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 7,
+          "channelId": "R03-T07-CH07",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 8,
+          "channelId": "R03-T07-CH08",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 9,
+          "channelId": "R03-T08-CH01",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 10,
+          "channelId": "R03-T08-CH02",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 11,
+          "channelId": "R03-T08-CH03",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 12,
+          "channelId": "R03-T08-CH04",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 13,
+          "channelId": "R03-T08-CH05",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 14,
+          "channelId": "R03-T08-CH06",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 15,
+          "channelId": "R03-T08-CH07",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 16,
+          "channelId": "R03-T08-CH08",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 17,
+          "channelId": "R03-T09-CH01",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 18,
+          "channelId": "R03-T09-CH02",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 19,
+          "channelId": "R03-T09-CH03",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 20,
+          "channelId": "R03-T09-CH04",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 21,
+          "channelId": "R03-T09-CH05",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 22,
+          "channelId": "R03-T09-CH06",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 23,
+          "channelId": "R03-T09-CH07",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 24,
+          "channelId": "R03-T09-CH08",
+          "purpose": "Formation",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        }
+      ]
+    },
+    {
+      "name": "Chamber_9",
+      "temp": "25\u00b0C",
+      "category": "RPT",
+      "channels": [
+        {
+          "number": 1,
+          "channelId": "R05-T01-CH01",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 2,
+          "channelId": "R05-T01-CH02",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 3,
+          "channelId": "R05-T01-CH03",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 4,
+          "channelId": "R05-T01-CH04",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 5,
+          "channelId": "R05-T01-CH05",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 6,
+          "channelId": "R05-T01-CH06",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 7,
+          "channelId": "R05-T01-CH07",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 8,
+          "channelId": "R05-T01-CH08",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 9,
+          "channelId": "R05-T02-CH01",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 10,
+          "channelId": "R05-T02-CH02",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 11,
+          "channelId": "R05-T02-CH03",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 12,
+          "channelId": "R05-T02-CH04",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 13,
+          "channelId": "R05-T02-CH05",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 14,
+          "channelId": "R05-T02-CH06",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 15,
+          "channelId": "R05-T02-CH07",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 16,
+          "channelId": "R05-T02-CH08",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 17,
+          "channelId": "R05-T03-CH01",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 18,
+          "channelId": "R05-T03-CH02",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 19,
+          "channelId": "R05-T03-CH03",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 20,
+          "channelId": "R05-T03-CH04",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 21,
+          "channelId": "R05-T03-CH05",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 22,
+          "channelId": "R05-T03-CH06",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 23,
+          "channelId": "R05-T03-CH07",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 24,
+          "channelId": "R05-T03-CH08",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 25,
+          "channelId": "R05-T04-CH01",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 26,
+          "channelId": "R05-T04-CH02",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 27,
+          "channelId": "R05-T04-CH03",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 28,
+          "channelId": "R05-T04-CH04",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 29,
+          "channelId": "R05-T04-CH05",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 30,
+          "channelId": "R05-T04-CH06",
+          "purpose": "RPT-only",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        }
+      ]
+    },
+    {
+      "name": "CoinCell_1",
+      "temp": "25\u00b0C",
+      "category": "Miscellaneous",
+      "channels": [
+        {
+          "number": 1,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 2,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 3,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 4,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 5,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 6,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 7,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 8,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 9,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 10,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 11,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 12,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 13,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 14,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 15,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 16,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        }
+      ]
+    },
+    {
+      "name": "CoinCell_2",
+      "temp": "25\u00b0C",
+      "category": "Miscellaneous",
+      "channels": [
+        {
+          "number": 1,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 2,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 3,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 4,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 5,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 6,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 7,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 8,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 9,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 10,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 11,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 12,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 13,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 14,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 15,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 16,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        }
+      ]
+    },
+    {
+      "name": "UHPC",
+      "temp": "25\u00b0C",
+      "category": "Miscellaneous",
+      "channels": [
+        {
+          "number": 1,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 2,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 3,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 4,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 5,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 6,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 7,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 8,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 9,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 10,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 11,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 12,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        }
+      ]
+    },
+    {
+      "name": "Bio-logic",
+      "temp": "25\u00b0C",
+      "category": "Miscellaneous",
+      "channels": [
+        {
+          "number": 1,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 2,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 3,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 4,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 5,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 6,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 7,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 8,
+          "channelId": null,
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        }
+      ]
+    },
+    {
+      "name": "HighTemp",
+      "temp": "70\u00b0C",
+      "category": "Miscellaneous",
+      "channels": [
+        {
+          "number": 1,
+          "channelId": "R05-T05-CH01",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 2,
+          "channelId": "R05-T05-CH02",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 3,
+          "channelId": "R05-T05-CH03",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 4,
+          "channelId": "R05-T05-CH04",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0303",
+          "analysisGroup": null,
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        },
+        {
+          "number": 5,
+          "channelId": "R05-T05-CH05",
+          "purpose": "Flex",
+          "cellId": null,
+          "analysisGroup": null,
+          "cellFormat": null,
+          "currentTest": null,
+          "durationWeeks": null,
+          "startDate": null
+        },
+        {
+          "number": 6,
+          "channelId": "R05-T05-CH06",
+          "purpose": "Flex",
+          "cellId": "CRD_00_CID0305",
+          "analysisGroup": null,
+          "cellFormat": "SLP",
+          "currentTest": "Cycle Life",
+          "durationWeeks": 24,
+          "startDate": "2026-03-30"
+        }
+      ]
+    }
+  ],
+  "testLibrary": [
+    {
+      "name": "Cycle Life",
+      "durationWeeks": 24,
+      "display": "Cycle Life"
+    },
+    {
+      "name": "Formation",
+      "durationWeeks": 0.5,
+      "display": "Formation (0.5w)"
+    },
+    {
+      "name": "Calendar Life RPT",
+      "durationWeeks": 1,
+      "display": "Calendar Life RPT"
+    },
+    {
+      "name": "BOL RPT",
+      "durationWeeks": 1,
+      "display": "BOL RPT"
+    },
+    {
+      "name": "EIS",
+      "durationWeeks": 1,
+      "display": "EIS"
+    },
+    {
+      "name": "Rate Capability",
+      "durationWeeks": 2,
+      "display": "Rate Capability"
+    },
+    {
+      "name": "UHPC",
+      "durationWeeks": 3,
+      "display": "UHPC"
+    },
+    {
+      "name": "Coin Cell Formation",
+      "durationWeeks": 0.5,
+      "display": "Coin Cell Formation (0.5w)"
+    },
+    {
+      "name": "Coin Cell Cycling",
+      "durationWeeks": 4,
+      "display": "Coin Cell Cycling"
+    }
+  ],
+  "rptSettings": {
+    "durationDays": 4,
+    "restDays": 28
+  },
+  "rptCells": [
+    {
+      "cellId": "CRD_00_CID0227",
+      "nextRptMonth": "4M",
+      "soc": 0.0,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-04",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0260",
+      "nextRptMonth": "2M",
+      "soc": 0.0,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-04",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-20",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_05_CID0043",
+      "nextRptMonth": "1M",
+      "soc": 1.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-04",
+      "assignedStorage": "Chamber_4",
+      "nextRptStart": "2026-04-22",
+      "capacityMah": null,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-03-13",
+          "returnDate": "2026-03-25"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-22",
+          "returnDate": "2026-04-26"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-24",
+          "returnDate": "2026-05-28"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-25",
+          "returnDate": "2026-06-29"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-27",
+          "returnDate": "2026-07-31"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-28",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0228",
+      "nextRptMonth": "4M",
+      "soc": 0.0,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-05",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0261",
+      "nextRptMonth": "2M",
+      "soc": 0.0,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-05",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-23",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_05_CID0044",
+      "nextRptMonth": "1M",
+      "soc": 1.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-05",
+      "assignedStorage": "Chamber_4",
+      "nextRptStart": "2026-04-22",
+      "capacityMah": null,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-03-13",
+          "returnDate": "2026-03-25"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-22",
+          "returnDate": "2026-04-26"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-24",
+          "returnDate": "2026-05-28"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-25",
+          "returnDate": "2026-06-29"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-27",
+          "returnDate": "2026-07-31"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-28",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0229",
+      "nextRptMonth": "4M",
+      "soc": 0.0,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-06",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0262",
+      "nextRptMonth": "2M",
+      "soc": 0.0,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-06",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-23",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_05_CID0050",
+      "nextRptMonth": "1M",
+      "soc": 1.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-06",
+      "assignedStorage": "Chamber_4",
+      "nextRptStart": "2026-04-22",
+      "capacityMah": null,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-03-13",
+          "returnDate": "2026-03-25"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-22",
+          "returnDate": "2026-04-26"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-24",
+          "returnDate": "2026-05-28"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-25",
+          "returnDate": "2026-06-29"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-27",
+          "returnDate": "2026-07-31"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-28",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0238",
+      "nextRptMonth": "4M",
+      "soc": 0.5,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-07",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0263",
+      "nextRptMonth": "2M",
+      "soc": 0.5,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-07",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-23",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_05_CID0051",
+      "nextRptMonth": "1M",
+      "soc": 1.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-07",
+      "assignedStorage": "Chamber_4",
+      "nextRptStart": "2026-04-22",
+      "capacityMah": null,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-03-13",
+          "returnDate": "2026-03-25"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-22",
+          "returnDate": "2026-04-26"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-24",
+          "returnDate": "2026-05-28"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-25",
+          "returnDate": "2026-06-29"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-27",
+          "returnDate": "2026-07-31"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-28",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0239",
+      "nextRptMonth": "4M",
+      "soc": 0.5,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-08",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0264",
+      "nextRptMonth": "2M",
+      "soc": 0.5,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-08",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-23",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_05_CID0055",
+      "nextRptMonth": "1M",
+      "soc": 1.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-08",
+      "assignedStorage": "Chamber_4",
+      "nextRptStart": "2026-04-23",
+      "capacityMah": null,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-03-21",
+          "returnDate": "2026-03-26"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-23",
+          "returnDate": "2026-04-27"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-25",
+          "returnDate": "2026-05-29"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-26",
+          "returnDate": "2026-06-30"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-28",
+          "returnDate": "2026-08-01"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-29",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0240",
+      "nextRptMonth": "4M",
+      "soc": 0.5,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-09",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0265",
+      "nextRptMonth": "2M",
+      "soc": 0.5,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-09",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-23",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_05_CID0057",
+      "nextRptMonth": "1M",
+      "soc": 1.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-09",
+      "assignedStorage": "Chamber_4",
+      "nextRptStart": "2026-04-23",
+      "capacityMah": null,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-03-21",
+          "returnDate": "2026-03-26"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-23",
+          "returnDate": "2026-04-27"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-25",
+          "returnDate": "2026-05-29"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-26",
+          "returnDate": "2026-06-30"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-28",
+          "returnDate": "2026-08-01"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-29",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0247",
+      "nextRptMonth": "4M",
+      "soc": 1.0,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-10",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0266",
+      "nextRptMonth": "2M",
+      "soc": 1.0,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-10",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-23",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_05_CID0062",
+      "nextRptMonth": "1M",
+      "soc": 1.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-10",
+      "assignedStorage": "Chamber_4",
+      "nextRptStart": "2026-04-27",
+      "capacityMah": null,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-03-25",
+          "returnDate": "2026-03-30"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-27",
+          "returnDate": "2026-05-01"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-29",
+          "returnDate": "2026-06-02"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-30",
+          "returnDate": "2026-07-04"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-08-01",
+          "returnDate": "2026-08-05"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-09-02",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0248",
+      "nextRptMonth": "4M",
+      "soc": 1.0,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-11",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0267",
+      "nextRptMonth": "2M",
+      "soc": 1.0,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-11",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-20",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_05_CID0063",
+      "nextRptMonth": "1M",
+      "soc": 1.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-11",
+      "assignedStorage": "Chamber_4",
+      "nextRptStart": "2026-04-27",
+      "capacityMah": null,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-03-25",
+          "returnDate": "2026-03-30"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-27",
+          "returnDate": "2026-05-01"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-29",
+          "returnDate": "2026-06-02"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-30",
+          "returnDate": "2026-07-04"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-08-01",
+          "returnDate": "2026-08-05"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-09-02",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0249",
+      "nextRptMonth": "4M",
+      "soc": 1.0,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-12",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0269",
+      "nextRptMonth": "2M",
+      "soc": 1.0,
+      "storageTemp": "25\u00b0C",
+      "assignedChannel": "Chamber_9-12",
+      "assignedStorage": "Chamber_9",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-23",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0230",
+      "nextRptMonth": "4M",
+      "soc": 0.0,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-13",
+      "assignedStorage": "Chamber_6",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0270",
+      "nextRptMonth": "2M",
+      "soc": 0.0,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-13",
+      "assignedStorage": "Chamber_3",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-23",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0231",
+      "nextRptMonth": "4M",
+      "soc": 0.0,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-14",
+      "assignedStorage": "Chamber_6",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0232",
+      "nextRptMonth": "4M",
+      "soc": 0.0,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-15",
+      "assignedStorage": "Chamber_6",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0272",
+      "nextRptMonth": "2M",
+      "soc": 0.0,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-15",
+      "assignedStorage": "Chamber_3",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-23",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0241",
+      "nextRptMonth": "4M",
+      "soc": 0.5,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-16",
+      "assignedStorage": "Chamber_6",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0273",
+      "nextRptMonth": "2M",
+      "soc": 0.5,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-16",
+      "assignedStorage": "Chamber_3",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-23",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0242",
+      "nextRptMonth": "4M",
+      "soc": 0.5,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-17",
+      "assignedStorage": "Chamber_6",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0274",
+      "nextRptMonth": "2M",
+      "soc": 0.5,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-17",
+      "assignedStorage": "Chamber_3",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-20",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0243",
+      "nextRptMonth": "4M",
+      "soc": 0.5,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-18",
+      "assignedStorage": "Chamber_6",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0275",
+      "nextRptMonth": "2M",
+      "soc": 0.5,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-18",
+      "assignedStorage": "Chamber_3",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-23",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0250",
+      "nextRptMonth": "4M",
+      "soc": 1.0,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-19",
+      "assignedStorage": "Chamber_6",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0276",
+      "nextRptMonth": "2M",
+      "soc": 1.0,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-19",
+      "assignedStorage": "Chamber_3",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-23",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0251",
+      "nextRptMonth": "4M",
+      "soc": 1.0,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-20",
+      "assignedStorage": "Chamber_6",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0277",
+      "nextRptMonth": "2M",
+      "soc": 1.0,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-20",
+      "assignedStorage": "Chamber_3",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-20",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0252",
+      "nextRptMonth": "4M",
+      "soc": 1.0,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-21",
+      "assignedStorage": "Chamber_6",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0278",
+      "nextRptMonth": "2M",
+      "soc": 1.0,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-21",
+      "assignedStorage": "Chamber_3",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-20",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0233",
+      "nextRptMonth": "4M",
+      "soc": 0.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-22",
+      "assignedStorage": "Chamber_5",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0279",
+      "nextRptMonth": "2M",
+      "soc": 0.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-22",
+      "assignedStorage": "Chamber_2",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-20",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0235",
+      "nextRptMonth": "4M",
+      "soc": 0.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-23",
+      "assignedStorage": "Chamber_5",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0280",
+      "nextRptMonth": "2M",
+      "soc": 0.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-23",
+      "assignedStorage": "Chamber_2",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-20",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0237",
+      "nextRptMonth": "4M",
+      "soc": 0.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-24",
+      "assignedStorage": "Chamber_5",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0281",
+      "nextRptMonth": "2M",
+      "soc": 0.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-24",
+      "assignedStorage": "Chamber_2",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-20",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0244",
+      "nextRptMonth": "4M",
+      "soc": 0.5,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-25",
+      "assignedStorage": "Chamber_5",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0283",
+      "nextRptMonth": "2M",
+      "soc": 0.5,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-25",
+      "assignedStorage": "Chamber_2",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-20",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0245",
+      "nextRptMonth": "4M",
+      "soc": 0.5,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-26",
+      "assignedStorage": "Chamber_5",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0284",
+      "nextRptMonth": "2M",
+      "soc": 0.5,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-26",
+      "assignedStorage": "Chamber_2",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-20",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0246",
+      "nextRptMonth": "4M",
+      "soc": 0.5,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-27",
+      "assignedStorage": "Chamber_5",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0285",
+      "nextRptMonth": "2M",
+      "soc": 0.5,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-27",
+      "assignedStorage": "Chamber_2",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-20",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0253",
+      "nextRptMonth": "4M",
+      "soc": 1.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-28",
+      "assignedStorage": "Chamber_5",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0288",
+      "nextRptMonth": "2M",
+      "soc": 1.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-28",
+      "assignedStorage": "Chamber_2",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-20",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0254",
+      "nextRptMonth": "4M",
+      "soc": 1.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-29",
+      "assignedStorage": "Chamber_5",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0289",
+      "nextRptMonth": "2M",
+      "soc": 1.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-29",
+      "assignedStorage": "Chamber_2",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-20",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0255",
+      "nextRptMonth": "4M",
+      "soc": 1.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-30",
+      "assignedStorage": "Chamber_5",
+      "nextRptStart": "2026-05-15",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2025-12-29",
+          "returnDate": "2026-01-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-02-02",
+          "returnDate": "2026-02-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-03-09",
+          "returnDate": "2026-03-16"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-04-13",
+          "returnDate": "2026-04-17"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-05-15",
+          "returnDate": "2026-05-19"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-06-16",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0291",
+      "nextRptMonth": "2M",
+      "soc": 1.0,
+      "storageTemp": "60\u00b0C",
+      "assignedChannel": "Chamber_9-30",
+      "assignedStorage": "Chamber_2",
+      "nextRptStart": "2026-05-04",
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-20",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        },
+        {
+          "rptNumber": 3,
+          "startDate": "2026-05-04",
+          "returnDate": "2026-05-08"
+        },
+        {
+          "rptNumber": 4,
+          "startDate": "2026-06-05",
+          "returnDate": "2026-06-09"
+        },
+        {
+          "rptNumber": 5,
+          "startDate": "2026-07-07",
+          "returnDate": "2026-07-11"
+        },
+        {
+          "rptNumber": 6,
+          "startDate": "2026-08-08",
+          "returnDate": null
+        }
+      ]
+    },
+    {
+      "cellId": "CRD_00_CID0271",
+      "nextRptMonth": "2M",
+      "soc": 0.0,
+      "storageTemp": "45\u00b0C",
+      "assignedChannel": "Chamber_9-14",
+      "assignedStorage": "Chamber_3",
+      "nextRptStart": null,
+      "capacityMah": 50.0,
+      "rptType": "Calendar Life RPT",
+      "events": [
+        {
+          "rptNumber": 1,
+          "startDate": "2026-02-23",
+          "returnDate": "2026-03-02"
+        },
+        {
+          "rptNumber": 2,
+          "startDate": "2026-04-02",
+          "returnDate": "2026-04-06"
+        }
+      ]
+    }
+  ]
+}
