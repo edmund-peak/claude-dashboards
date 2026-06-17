@@ -50,6 +50,20 @@ AUTO_SYNC_CHAMBERS = {
     "HighTemp",  "CoinCell_1", "CoinCell_2",
 }
 
+# Chambers that physically hold cells in storage between RPTs. RPT cells are
+# only ever auto-assigned to these (Chamber_1 / Chamber_7 / Chamber_8 have no
+# shelf space).
+STORAGE_CHAMBERS = {
+    "Chamber_2", "Chamber_3",
+    "Chamber_4", "Chamber_5", "Chamber_6", "Chamber_9",
+}
+
+# Known non-default shelf layouts. Every shelf is a uniform 4-column × 3-row
+# (12-slot) grid, so there are no special-case chambers; shelf COUNT per chamber
+# comes from storageConfig (integer N => N such shelves).
+DEFAULT_STORAGE_LAYOUT = {
+}
+
 
 # -----------------------------------------------------------------
 # Config + first-run setup
@@ -86,6 +100,7 @@ else:
 
 POLL_INTERVAL        = CONFIG.get("poll_interval_seconds", 30)
 RACK_MAP             = CONFIG.get("rack_mapping", {})
+FOLDER_LABELS        = {str(Path(k)).lower(): v for k, v in CONFIG.get("folder_labels", {}).items()}
 BATCH_GAP_MINUTES    = CONFIG.get("batch_gap_minutes", 120)
 UPDATING_THRESHOLD_MINUTES = CONFIG.get("updating_threshold_minutes", 20)
 STABLE_STALE_HOURS   = CONFIG.get("stable_stale_hours", 12)
@@ -96,24 +111,15 @@ STABLE_STALE_HOURS   = CONFIG.get("stable_stale_hours", 12)
 # -----------------------------------------------------------------
 
 FILENAME_RE = re.compile(
-    # Optional leading timestamp like "1778605617301_"
-    r"(?:\d+_)?"
-    # CRD_XX_CIDYYY
-    r"(CRD_\d+_CID\d+)"
-    # Test info (greedy-back, captures everything up to the IP segment)
-    r"_(.+?)"
-    # IP: either 127.0.0.1 or 127_0_0_1
-    r"_(\d+[._]\d+[._]\d+[._]\d+)"
-    # BTSnn
-    r"-BTS(\d+)"
-    # Rack-Tester-Channel
-    r"-(\d+)-(\d+)-(\d+)"
-    # Trailing seq (e.g. "399_2" or "145")
-    r"-(\d+(?:_\d+)?)"
+    r"(CRD_\d+_CID\d+)"    # cell ID,  e.g. CRD_05_CID0027
+    r"_(.+?)"               # test info, e.g. Po_CYLT-1P-RPT_45C
+    r"_127\.0\.0\.1"        # Neware always runs on localhost
+    r"-BTS\d+"              # BTS device number (not needed beyond parsing)
+    r"-(\d+)-(\d+)-(\d+)"  # rack - tester - channel
+    r"-(\d+(?:_\d+)?)"     # serial[_rollover], e.g. 189 or 189_4
     r"\.xlsx$",
     re.IGNORECASE,
 )
-TEMP_RE = re.compile(r"(\d+)C", re.IGNORECASE)
 TEST_TYPE_KEYWORDS = [
     ("RPT",   "RPT"),
     ("CYLT",  "Cycle Life"),
@@ -125,6 +131,10 @@ TEST_TYPE_KEYWORDS = [
     ("EIS",   "EIS"),
     ("OCV",   "OCV"),
 ]
+# Storage condition embedded in the test-info, e.g. "..._45C_..." -> 45°C.
+TEMP_RE = re.compile(r"(\d{1,3})\s*C(?:\b|_|$)", re.IGNORECASE)
+# State of charge, e.g. "100SOC", "0%SOC", "50 SOC" -> 1.0 / 0.0 / 0.5
+SOC_RE = re.compile(r"(\d{1,3})\s*%?\s*SOC", re.IGNORECASE)
 
 
 def parse_filename(filename):
@@ -133,49 +143,61 @@ def parse_filename(filename):
         return None
     cell_id     = m.group(1)
     test_info   = m.group(2)
-    ip_seg      = m.group(3)
-    bts_num     = m.group(4)
-    rack_num    = m.group(5)
-    tester_num  = m.group(6)
-    channel_num = m.group(7)
-    seq         = m.group(8)
+    rack_num    = m.group(3)
+    tester_num  = m.group(4)
+    channel_num = m.group(5)
+    seq         = m.group(6)
 
-    # When Neware rolls a file over after it gets too large, it appends "_N"
-    # to the trailing sequence (e.g. "...-185.xlsx" → "...-185_1.xlsx" →
-    # "...-185_2.xlsx"). All these are the same test. Strip the rollover
-    # suffix so we can group them by a stable "test_key".
+    rack_code  = RACK_MAP.get(rack_num)
+    prefix     = rack_code if rack_code else "?" + rack_num
+    channel_id = "{}-T{:02d}-CH{:02d}".format(prefix, int(tester_num), int(channel_num))
+
+    # Strip Neware rollover suffix (_1, _2 …) so all files for the same
+    # ongoing test share one key for start-date tracking.
     base_seq = seq.split("_", 1)[0]
-    test_key = "{}|{}|{}|{}|{}|{}|{}|{}".format(
-        cell_id, test_info, ip_seg, bts_num,
-        rack_num, tester_num, channel_num, base_seq)
-
-    rack_code = RACK_MAP.get(rack_num)
-    if rack_code:
-        channel_id = "{}-T{:02d}-CH{:02d}".format(
-            rack_code, int(tester_num), int(channel_num))
-    else:
-        channel_id = "?{}-T{:02d}-CH{:02d}".format(
-            rack_num, int(tester_num), int(channel_num))
-
-    temp_m = TEMP_RE.search(test_info)
-    temp = temp_m.group(1) + "C" if temp_m else None
+    test_key = "{}|{}|{}".format(cell_id, channel_id, base_seq)
 
     test_type = "Unknown"
-    info_up = test_info.upper()
     for keyword, label in TEST_TYPE_KEYWORDS:
-        if keyword in info_up:
+        if keyword in test_info.upper():
             test_type = label
             break
 
+    # Storage temp (e.g. "45C" -> "45°C"). SOC strips out first so its digits
+    # aren't mistaken for a temperature.
+    info_wo_soc = SOC_RE.sub("", test_info)
+    temp_m = TEMP_RE.search(info_wo_soc)
+    temp = temp_m.group(1) + "°C" if temp_m else None
+
+    soc_m = SOC_RE.search(test_info)
+    soc = round(int(soc_m.group(1)) / 100.0, 2) if soc_m else None
+
+    # True only for Calendar Life RPT files (contain "CLD" or "CAL" in test_info).
+    # Regular one-time RPTs on cycle-life cells have "RPT" but not "CLD"/"CAL".
+    info_up = test_info.upper()
+    is_calendar_life = ("CLD" in info_up) or ("CAL" in info_up)
+
     return {
-        "cell_id":     cell_id,
-        "test_info":   test_info,
-        "test_type":   test_type,
-        "temp":        temp,
-        "channel_id":  channel_id,
-        "test_key":    test_key,
-        "filename":    filename,
+        "cell_id":          cell_id,
+        "test_type":        test_type,
+        "temp":             temp,
+        "soc":              soc,
+        "channel_id":       channel_id,
+        "test_key":         test_key,
+        "filename":         filename,
+        "is_calendar_life": is_calendar_life,
     }
+
+
+def _iso_add(date_str, days):
+    """Add `days` to an ISO date string, returning a new ISO string (or None)."""
+    if not date_str:
+        return None
+    try:
+        d = datetime.strptime(date_str, "%Y-%m-%d").date() + timedelta(days=days)
+        return d.strftime("%Y-%m-%d")
+    except (ValueError, TypeError):
+        return None
 
 
 # -----------------------------------------------------------------
@@ -205,6 +227,19 @@ def load_data():
             data["rptCells"] = []
         if "rptSettings" not in data:
             data["rptSettings"] = {"durationDays": 4, "restDays": 28}
+        if "storageConfig" not in data:
+            data["storageConfig"] = {}  # chamber -> {shelves:[{cap,cols}]}
+        for ch, layout in DEFAULT_STORAGE_LAYOUT.items():
+            data["storageConfig"].setdefault(ch, layout)
+        if "removedCells" not in data:
+            data["removedCells"] = []   # cellIds pulled from calendar-life testing
+        # One-time migration to the auto-scheduling model: wipe the old hand-
+        # seeded RPT cells so the scheduler repopulates them from Neware files.
+        if data.get("rptSchema") != "auto-v1":
+            data["rptCells"] = []
+            data["rptSchema"] = "auto-v1"
+            with open(DATA_PATH, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
         return data
 
 
@@ -370,11 +405,6 @@ class NewareScanner:
         self.unmapped_channels = []  # files whose channel_id doesn't match any chamber
         self.folder_stats = []       # per-folder: {folder, exists, file_count}
         self.lock = threading.Lock()
-        # On the first scan after server startup, always rebuild stable from
-        # live regardless of updating state. This catches stale data_stable.json
-        # files left over from previous code versions (or manual resets) so the
-        # user doesn't get permanently frozen on a wrong snapshot.
-        self.has_bootstrapped = False
 
     def scan(self):
         """Scan all configured folders, compute live + stable batches,
@@ -383,8 +413,8 @@ class NewareScanner:
         all_files = []
         folder_stats = []
         for folder in self.folders:
-            stat = {"folder": str(folder), "exists": False, "file_count": 0,
-                    "error": None}
+            stat = {"folder": str(folder), "label": FOLDER_LABELS.get(str(folder).lower()),
+                    "exists": False, "file_count": 0, "error": None}
             try:
                 if not folder.exists():
                     print("[WARN] Watch folder does not exist: " + str(folder))
@@ -501,72 +531,52 @@ class NewareScanner:
                 min_ctime_by_test_key[tk] = ct
 
         # Pass 3+4: apply the live active set to data.json (always).
-        live_unmapped = self._apply_active(
-            live_active, min_ctime_by_test_key, DATA_PATH)
+        live_unmapped = self._apply_active(live_active, min_ctime_by_test_key)
 
-        # Stable view: keep frozen during updates so the user has a calm
-        # picture to look at while Neware is rewriting files.
-        # Update stable when ANY of the following is true:
-        #   - data_stable.json does not exist yet (bootstrap)
-        #   - no folder is currently updating (Neware is quiet — safe to advance)
-        #   - stable has gone stale beyond STABLE_STALE_HOURS (safeguard against
-        #     a runaway updating streak that never lets stable catch up)
-        stale_threshold = timedelta(hours=STABLE_STALE_HOURS)
-        stable_age = None
-        if DATA_STABLE_PATH.exists():
-            try:
-                stable_age = now - datetime.fromtimestamp(
-                    DATA_STABLE_PATH.stat().st_mtime)
-            except OSError:
-                stable_age = None
-        is_first_stable = not DATA_STABLE_PATH.exists()
-        is_stable_stale = (stable_age is not None
-                           and stable_age > stale_threshold)
-        is_first_scan_this_boot = not self.has_bootstrapped
+        # Stable view: freeze during updates so the UI has a calm picture
+        # while Neware is actively writing. Advance when quiet, or after
+        # STABLE_STALE_HOURS as a safeguard against long uninterrupted runs.
+        try:
+            stable_age = (now - datetime.fromtimestamp(DATA_STABLE_PATH.stat().st_mtime)
+                          if DATA_STABLE_PATH.exists() else None)
+        except OSError:
+            stable_age = None
 
-        # Refresh stable from live when any of:
-        #   - bootstrap (first scan since process started — guards against
-        #     stale data_stable.json left over from a previous code version)
-        #   - no data_stable.json exists yet
-        #   - no folder is currently updating (Neware is quiet — safe to advance)
-        #   - stable has gone stale beyond STABLE_STALE_HOURS
-        if (is_first_scan_this_boot or is_first_stable
-                or not any_updating or is_stable_stale):
-            # Copy live → stable. We don't re-apply by walking files; we just
-            # copy the freshly-written data.json content. This is exactly the
-            # state we want: stable = "snapshot of live taken when quiet".
+        stable_is_stale = stable_age is not None and stable_age > timedelta(hours=STABLE_STALE_HOURS)
+        if not any_updating or not DATA_STABLE_PATH.exists() or stable_is_stale:
             with _data_lock:
-                with open(DATA_PATH, encoding="utf-8") as f:
-                    live_data = json.load(f)
-                save_data(live_data, path=DATA_STABLE_PATH)
+                save_data(json.loads(DATA_PATH.read_text(encoding="utf-8")), path=DATA_STABLE_PATH)
             stable_refreshed = True
-            if is_first_scan_this_boot:
-                self.has_bootstrapped = True
         else:
             stable_refreshed = False
 
-        # Count what's in stable now (whether refreshed or frozen) — read it
-        # back so the count is honest about what the user is seeing.
-        stable_active_count = 0
-        try:
-            with open(DATA_STABLE_PATH, encoding="utf-8") as f:
-                stable_data = json.load(f)
-            for c in stable_data.get("chambers", []):
-                if c.get("name") not in AUTO_SYNC_CHAMBERS:
-                    continue
-                for ch in c.get("channels", []):
-                    if ch.get("cellId"):
-                        stable_active_count += 1
-        except (OSError, json.JSONDecodeError):
-            pass
+        # Count assigned cells in both live and stable data files.
+        # Both use the same methodology (cellId present in auto-sync chambers)
+        # so the two numbers are directly comparable in the UI.
+        def _count_cells(path):
+            count = 0
+            try:
+                with open(path, encoding="utf-8") as f:
+                    d = json.load(f)
+                for c in d.get("chambers", []):
+                    if c.get("name") not in AUTO_SYNC_CHAMBERS:
+                        continue
+                    for ch in c.get("channels", []):
+                        if ch.get("cellId"):
+                            count += 1
+            except (OSError, json.JSONDecodeError):
+                pass
+            return count
+
+        live_active_count   = _count_cells(DATA_PATH)
+        stable_active_count = _count_cells(DATA_STABLE_PATH)
 
         with self.lock:
             self.last_scan = datetime.now().isoformat()
             self.newest_file_time = newest.isoformat() if newest else None
             self.cutoff_time = cutoff.isoformat() if cutoff else None
             self.total_files = len(all_files)
-            live_channels = set(f["channel_id"] for f in live_active)
-            self.active_count = len(live_channels)
+            self.active_count = live_active_count
             self.stable_active_count = stable_active_count
             self.unmapped_channels = live_unmapped
             self.folder_stats = folder_stats
@@ -585,9 +595,8 @@ class NewareScanner:
                   "refreshed" if stable_refreshed else "frozen",
                   datetime.now().strftime("%H:%M:%S")))
 
-    def _apply_active(self, active, min_ctime_by_test_key, target_path):
-        """Apply a list of active files to a fresh copy of the seed data,
-        and write it to target_path. Returns the list of unmapped channels."""
+    def _apply_active(self, active, min_ctime_by_test_key):
+        """Merge the active file batch into data.json. Returns unmapped channels."""
         # Pick the most recently-modified file per channel
         by_channel = {}
         for f in active:
@@ -596,14 +605,7 @@ class NewareScanner:
                 by_channel[cid] = f
 
         with _data_lock:
-            # Load the existing target file (preserves user-edited non-auto-sync
-            # chambers and RPT data). If it doesn't exist yet, fall back to
-            # data.json (so the stable file starts from the same baseline).
-            if target_path.exists():
-                with open(target_path, encoding="utf-8") as f:
-                    data = json.load(f)
-            else:
-                data = load_data()
+            data = load_data()
             meta = load_metadata()
             by_cell_meta = meta.get("by_cell", {})
 
@@ -653,8 +655,140 @@ class NewareScanner:
                 ch["cellFormat"]    = cm.get("cellFormat")
                 ch["durationWeeks"] = cm.get("durationWeeks")
 
-            save_data(data, path=target_path)
+            self._sync_rpt_cells(by_channel, min_ctime_by_test_key, data)
+            save_data(data)
             return unmapped
+
+    def _storage_capacity(self, data, chamber):
+        """Total slots in a chamber, from storageConfig (mirrors the client's
+        shelvesOf): dict shelves sum their caps, a bare int N => N shelves of 12,
+        otherwise one 12-slot shelf."""
+        cfg = (data.get("storageConfig") or {}).get(chamber)
+        if isinstance(cfg, dict) and isinstance(cfg.get("shelves"), list) and cfg["shelves"]:
+            return sum(s.get("cap", 12) for s in cfg["shelves"])
+        if isinstance(cfg, (int, float)) and cfg > 0:
+            return int(cfg) * 12
+        return 12
+
+    def _pack_chamber(self, data, temp):
+        """Pick a storage chamber for a new cell at `temp` by PACKING: the
+        lowest-numbered matching chamber that still has a free slot (keeps cells
+        concentrated rather than spread). Returns None if no chamber matches."""
+        if not temp:
+            return None
+        def num(n):
+            m = re.search(r"(\d+)", n)
+            return int(m.group(1)) if m else 999
+        candidates = sorted(
+            [c["name"] for c in data.get("chambers", [])
+             if c.get("temp") == temp and c["name"] in STORAGE_CHAMBERS],
+            key=num)
+        if not candidates:
+            return None
+        counts = {}
+        for c in data.get("rptCells", []):
+            s = c.get("assignedStorage")
+            if s in candidates:
+                counts[s] = counts.get(s, 0) + 1
+        for ch in candidates:
+            if counts.get(ch, 0) < self._storage_capacity(data, ch):
+                return ch
+        return candidates[-1]  # all full → overflow into the last
+
+    def _sync_rpt_cells(self, by_channel, min_ctime_by_test_key, data):
+        """Auto-manage data['rptCells'] from the running file record.
+
+        The schedule is event-driven, mirroring the lab's spreadsheet: each
+        detected RPT run is an event {start, returned}. The watcher revises
+        the schedule as cells run:
+
+        - First RPT seen for a cell  -> create the cell (storage temp + SOC
+          from the filename, temp-matched least-full storage chamber) with an
+          open event.
+        - A new RPT run after the last one returned -> append a new open event.
+        - `running` is True while the RPT file is being actively written.
+        - When a run stops but its event is still open, the cell is "awaiting
+          return": the UI prompts for the date it went back to storage, which
+          closes the event and schedules the next RPT (return + rest days).
+
+        Storage location and event return-dates are owned by the user; the
+        watcher never overwrites them. Cells the user removed from calendar-
+        life testing (data['removedCells']) are never recreated.
+        """
+        cells = data.setdefault("rptCells", [])
+        removed = set(data.get("removedCells", []))
+        by_id = {c.get("cellId"): c for c in cells}
+        rs = data.get("rptSettings") or {}
+        duration = rs.get("durationDays", 4)
+        rest = rs.get("restDays", 28)
+        now = datetime.now()
+        updating = timedelta(minutes=UPDATING_THRESHOLD_MINUTES)
+
+        # Cells with a Calendar Life RPT file in the active batch, and whether
+        # it's "live" (touched within the updating threshold => actively cycling).
+        # Only "CLD"/"CAL" files qualify — not one-time RPTs on cycle-life cells.
+        running_now = {}
+        for info in by_channel.values():
+            if info.get("test_type") != "RPT":
+                continue
+            if not info.get("is_calendar_life"):
+                continue
+            mod = info.get("file_modified")
+            start = min_ctime_by_test_key.get(info["test_key"], info.get("file_created"))
+            running_now[info["cell_id"]] = {
+                "live":    mod is not None and (now - mod) <= updating,
+                "start":   start.strftime("%Y-%m-%d") if start else None,
+                "channel": info["channel_id"],
+                "temp":    info.get("temp"),
+                "soc":     info.get("soc"),
+            }
+
+        # 1) Create new cells / open a new event when a fresh RPT run starts.
+        for cell_id, r in running_now.items():
+            if cell_id in removed:
+                continue
+            c = by_id.get(cell_id)
+            if c is None:
+                c = {
+                    "cellId":          cell_id,
+                    "storageTemp":     r["temp"],
+                    "soc":             r["soc"],
+                    "rptType":         "Calendar Life RPT",
+                    "assignedChannel": r["channel"],
+                    "assignedStorage": self._pack_chamber(data, r["temp"]),
+                    "storageShelf":    None,
+                    "storageSlot":     None,   # client packs into a free slot
+                    "anchorDate":      r["start"],
+                    "events":          [{"start": r["start"], "returned": None}],
+                }
+                cells.append(c)
+                by_id[cell_id] = c
+            else:
+                evs = c.setdefault("events", [])
+                last = evs[-1] if evs else None
+                # New cycle: only when the previous one is closed and this run
+                # is newer than the last recorded start.
+                if (last is None or last.get("returned") is not None) and r["start"] \
+                        and (last is None or r["start"] > (last.get("start") or "")):
+                    evs.append({"start": r["start"], "returned": None})
+                c["assignedChannel"] = r["channel"]
+
+        # 2) Derive run-state + schedule for every cell (safe to overwrite).
+        for c in cells:
+            evs = c.get("events", [])
+            last = evs[-1] if evs else None
+            r = running_now.get(c.get("cellId"))
+            open_event = bool(last and last.get("returned") is None)
+            c["running"] = bool(r and r["live"] and open_event)
+            if last and last.get("returned"):
+                c["nextRptStart"] = _iso_add(last["returned"], rest)
+            elif open_event:
+                c["nextRptStart"] = None          # on test / awaiting return
+            else:
+                c["nextRptStart"] = c.get("anchorDate")
+            c["nextRptMonth"] = str(sum(1 for e in evs if e.get("returned"))) + "M"
+            # Expected return ("the day it was due") = run start + duration.
+            c["dueReturn"] = _iso_add(last["start"], duration) if (last and last.get("start")) else None
 
     def status(self):
         with self.lock:
@@ -765,7 +899,7 @@ def api_data_post():
                 target.update(new_c)
 
         # rptCells, rptSettings, testLibrary -- always full overwrite
-        for key in ("rptCells", "rptSettings", "testLibrary"):
+        for key in ("rptCells", "rptSettings", "testLibrary", "storageConfig", "removedCells"):
             if key in new_data:
                 current[key] = new_data[key]
 
@@ -844,7 +978,7 @@ def _propagate_to_stable(live_data, meta):
                 stable_c.update(live_c)
 
         # Other top-level keys (rptCells, rptSettings, testLibrary) — copy
-        for key in ("rptCells", "rptSettings", "testLibrary"):
+        for key in ("rptCells", "rptSettings", "testLibrary", "storageConfig", "removedCells"):
             if key in live_data:
                 stable[key] = live_data[key]
 
@@ -918,8 +1052,11 @@ if __name__ == "__main__":
     load_data()
     _bootstrap_metadata()
 
-    # Initial scan
+    # Initial scan — always take a fresh stable snapshot on startup so
+    # data_stable.json never carries stale state across server restarts.
     SCANNER.scan()
+    with _data_lock:
+        save_data(json.loads(DATA_PATH.read_text(encoding="utf-8")), path=DATA_STABLE_PATH)
 
     # Background thread
     t = threading.Thread(target=background_scanner, daemon=True)

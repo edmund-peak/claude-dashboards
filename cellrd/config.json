@@ -3,6 +3,10 @@
     "C:\\ProgramData\\Neware\\Data",
     "\\\\PE-HZ83664\\Neware Data"
   ],
+  "folder_labels": {
+    "C:\\ProgramData\\Neware\\Data": "Peak-Pouch",
+    "\\\\PE-HZ83664\\Neware Data": "Peak-Coin"
+  },
   "poll_interval_seconds": 30,
 
   "batch_gap_minutes": 120,
