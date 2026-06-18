@@ -2,6 +2,7 @@
 cellrd/data.json
 cellrd/data_stable.json
 cellrd/metadata.json
+cellrd/storage_seed.json
 cellrd/*.json.tmp
 
 # --- Python ---

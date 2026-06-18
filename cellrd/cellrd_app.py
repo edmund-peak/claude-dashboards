@@ -22,6 +22,7 @@ Usage:
 Then open http://localhost:5000
 """
 
+import io
 import json
 import os
 import re
@@ -29,6 +30,7 @@ import shutil
 import sys
 import threading
 import time
+import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -41,6 +43,8 @@ SEED_PATH   = ROOT / "seed.json"
 DATA_PATH        = ROOT / "data.json"
 DATA_STABLE_PATH = ROOT / "data_stable.json"
 META_PATH        = ROOT / "metadata.json"  # user metadata for auto-sync channels
+STORAGE_SEED_PATH  = ROOT / "storage_seed.json"   # living layout memory (updated on edits)
+STORAGE_EXCEL_PATH = ROOT / "storage_excel.json"  # immutable Excel reference for re-import
 STATIC_DIR       = ROOT / "static"
 
 AUTO_SYNC_CHAMBERS = {
@@ -259,6 +263,102 @@ def load_stable_data():
         with open(DATA_STABLE_PATH, encoding="utf-8") as f:
             return json.load(f)
     return load_data()
+
+
+def load_storage_seed():
+    """Persistent layout memory: { cellId: {chamber, shelf, slot} }.
+    Seeded from the lab's Excel, then kept in sync with the user's edits."""
+    try:
+        with open(STORAGE_SEED_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def parse_storage_from_xlsx(xlsx_bytes):
+    """Pull {cellId: {chamber, shelf, slot}} from a lab Excel's 'RPT Planner'
+    sheet, using stdlib only (no openpyxl). Locates the 'Cell ID' and
+    'Assigned Storage Chamber' columns by header text, so column order can
+    shift between spreadsheet versions. Returns {} if it can't find them."""
+    z = zipfile.ZipFile(io.BytesIO(xlsx_bytes))
+    names = z.namelist()
+    ss = []
+    if "xl/sharedStrings.xml" in names:
+        ss = re.findall(r"<t[^>]*>(.*?)</t>",
+                        z.read("xl/sharedStrings.xml").decode("utf-8", "replace"), re.S)
+    relmap = dict(re.findall(r'Id="([^"]+)"[^>]*Target="([^"]+)"',
+                             z.read("xl/_rels/workbook.xml.rels").decode("utf-8", "replace")))
+    sheets = re.findall(r'<sheet[^>]*name="([^"]*)"[^>]*r:id="([^"]+)"',
+                        z.read("xl/workbook.xml").decode("utf-8", "replace"))
+    target = None
+    for name, rid in sheets:
+        if name.strip().lower() == "rpt planner":
+            target = relmap.get(rid)
+            break
+    if not target and sheets:
+        target = relmap.get(sheets[0][1])
+    if not target:
+        return {}
+    target = target.lstrip("/")
+    if not target.startswith("xl/"):
+        target = "xl/" + target
+    xml = z.read(target).decode("utf-8", "replace")
+    colletter = lambda ref: re.match(r"([A-Z]+)", ref).group(1)
+
+    def rowvals(row):
+        out = {}
+        for ref, t, v in re.findall(
+                r'<c r="([^"]+)"(?:[^>]*t="([^"]*)")?[^>]*>(?:<v>(.*?)</v>)?', row):
+            if not v:
+                continue
+            out[colletter(ref)] = ss[int(v)] if t == "s" else v
+        return out
+
+    rows = [rowvals(r) for r in re.findall(r"<row[^>]*>(.*?)</row>", xml, re.S)]
+    cell_col = chamber_col = None
+    for rv in rows:
+        by_text = {str(val).strip().lower(): col for col, val in rv.items()}
+        if "cell id" in by_text and "assigned storage chamber" in by_text:
+            cell_col = by_text["cell id"]
+            chamber_col = by_text["assigned storage chamber"]
+            break
+    if not cell_col or not chamber_col:
+        return {}
+    # Every Cell ID row is a "listed" cell (it's in the sheet, hence active).
+    # chamber is None when its storage cell is blank (e.g. currently on test).
+    mapping = {}
+    for rv in rows:
+        cid = rv.get(cell_col)
+        if not (cid and re.match(r"CRD_\d+_CID\d+$", str(cid))):
+            continue
+        ch = rv.get(chamber_col)
+        chamber = ch if (ch and str(ch).startswith("Chamber_")) else None
+        mapping[cid] = {"chamber": chamber, "shelf": None, "slot": None}
+    return mapping
+
+
+def save_storage_seed(data):
+    """Re-export the seed from the current layout so it always reflects the
+    latest arrangement. Called whenever the UI saves a layout change; that way
+    a cell returns to where the user last put it if it's ever re-detected or
+    the live data is rebuilt."""
+    seed = load_storage_seed()
+    seed = dict(seed) if isinstance(seed, dict) else {}
+    for c in data.get("rptCells", []):
+        cid = c.get("cellId")
+        if cid and c.get("assignedStorage"):
+            seed[cid] = {
+                "chamber": c.get("assignedStorage"),
+                "shelf":   c.get("storageShelf"),
+                "slot":    c.get("storageSlot"),
+            }
+    try:
+        tmp = STORAGE_SEED_PATH.with_suffix(".json.tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(seed, f, indent=0, sort_keys=True)
+        os.replace(tmp, STORAGE_SEED_PATH)
+    except OSError:
+        pass
 
 
 def load_metadata():
@@ -531,7 +631,11 @@ class NewareScanner:
                 min_ctime_by_test_key[tk] = ct
 
         # Pass 3+4: apply the live active set to data.json (always).
-        live_unmapped = self._apply_active(live_active, min_ctime_by_test_key)
+        # active_test_keys = the runs Neware is writing right now; the archive
+        # excludes these so it only ever shows *finished* tests.
+        active_test_keys = {f["test_key"] for f in live_active}
+        live_unmapped = self._apply_active(
+            live_active, min_ctime_by_test_key, all_files, active_test_keys)
 
         # Stable view: freeze during updates so the UI has a calm picture
         # while Neware is actively writing. Advance when quiet, or after
@@ -595,7 +699,7 @@ class NewareScanner:
                   "refreshed" if stable_refreshed else "frozen",
                   datetime.now().strftime("%H:%M:%S")))
 
-    def _apply_active(self, active, min_ctime_by_test_key):
+    def _apply_active(self, active, min_ctime_by_test_key, all_files, active_test_keys):
         """Merge the active file batch into data.json. Returns unmapped channels."""
         # Pick the most recently-modified file per channel
         by_channel = {}
@@ -626,6 +730,7 @@ class NewareScanner:
                     ch["cellId"]        = None
                     ch["currentTest"]   = None
                     ch["startDate"]     = None
+                    ch["filename"]      = None
                     ch["project"]       = None
                     ch["analysisGroup"] = None
                     ch["cellFormat"]    = None
@@ -646,6 +751,7 @@ class NewareScanner:
                 cell_id = info["cell_id"]
                 ch["cellId"]      = cell_id
                 ch["currentTest"] = info["test_type"]
+                ch["filename"]    = info.get("filename")
                 start_ct = min_ctime_by_test_key.get(
                     info["test_key"], info["file_created"])
                 ch["startDate"]   = start_ct.strftime("%Y-%m-%d")
@@ -655,7 +761,9 @@ class NewareScanner:
                 ch["cellFormat"]    = cm.get("cellFormat")
                 ch["durationWeeks"] = cm.get("durationWeeks")
 
+            self._update_archive(all_files, active_test_keys, data)
             self._sync_rpt_cells(by_channel, min_ctime_by_test_key, data)
+            self._seed_storage(data)
             save_data(data)
             return unmapped
 
@@ -694,6 +802,78 @@ class NewareScanner:
             if counts.get(ch, 0) < self._storage_capacity(data, ch):
                 return ch
         return candidates[-1]  # all full → overflow into the last
+
+    def _update_archive(self, all_files, active_test_keys, data):
+        """Rebuild a compact ledger of every cell ever run and the tests it ran,
+        swept fresh from *all* files on disk (as far back as the folders go).
+        Lives in data['archive'] keyed by cellId:
+
+            { "<cellId>": {
+                "tests": { "<testType>": {"first": iso, "last": iso} },
+                "lastSeen": iso } }
+
+        One small entry per cell, two dates per distinct test — deliberately
+        tiny. Currently-running tests (active_test_keys) are excluded, so the
+        archive only ever shows *finished* work. Rebuilt each scan, so it's
+        idempotent and self-heals if files are added/removed.
+        """
+        # Aggregate first/last per (cellId, testType), skipping in-progress runs.
+        per = {}
+        for f in all_files:
+            if f.get("test_key") in active_test_keys:
+                continue
+            cid = f.get("cell_id")
+            if not cid:
+                continue
+            tt = f.get("test_type") or "Unknown"
+            fc = f.get("file_created")
+            fm = f.get("file_modified")
+            if fc is None and fm is None:
+                continue
+            first = fc or fm
+            last = fm or fc
+            e = per.get((cid, tt))
+            if e is None:
+                per[(cid, tt)] = [first, last]
+            else:
+                if first < e[0]:
+                    e[0] = first
+                if last > e[1]:
+                    e[1] = last
+
+        arch = {}
+        for (cid, tt), (first, last) in per.items():
+            rec = arch.setdefault(cid, {"tests": {}, "lastSeen": None})
+            first_s = first.strftime("%Y-%m-%d")
+            last_s = last.strftime("%Y-%m-%d")
+            rec["tests"][tt] = {"first": first_s, "last": last_s}
+            if not rec["lastSeen"] or last_s > rec["lastSeen"]:
+                rec["lastSeen"] = last_s
+        data["archive"] = arch
+
+    def _seed_storage(self, data):
+        """One-time bulk initialization of where existing cells are stored, from
+        storage_seed.json (initially exported from the lab's Excel). Applies the
+        saved chamber/shelf/slot to matching cells. Runs once (guarded by the
+        'storageSeeded' flag); after that, the seed is kept in sync with the
+        user's layout edits (see save_storage_seed) and used to restore a cell's
+        spot when it's re-detected (see _sync_rpt_cells).
+        """
+        if data.get("storageSeeded"):
+            return
+        seed = load_storage_seed()
+        if not seed:
+            return  # no seed file yet — don't set the flag, retry next scan
+        applied = 0
+        for c in data.get("rptCells", []):
+            spot = seed.get(c.get("cellId"))
+            if spot and spot.get("chamber"):
+                c["assignedStorage"] = spot["chamber"]
+                c["storageShelf"] = spot.get("shelf")
+                c["storageSlot"] = spot.get("slot")   # may be None -> client packs
+                applied += 1
+        data["storageSeeded"] = True
+        print("[SEED] storage initialized: {} cells placed".format(applied))
 
     def _sync_rpt_cells(self, by_channel, min_ctime_by_test_key, data):
         """Auto-manage data['rptCells'] from the running file record.
@@ -738,28 +918,34 @@ class NewareScanner:
             running_now[info["cell_id"]] = {
                 "live":    mod is not None and (now - mod) <= updating,
                 "start":   start.strftime("%Y-%m-%d") if start else None,
+                "lastMod": mod.strftime("%Y-%m-%d") if mod else None,
                 "channel": info["channel_id"],
                 "temp":    info.get("temp"),
                 "soc":     info.get("soc"),
+                "file":    info.get("filename"),
             }
 
+        # Restore a re-detected cell to its last-known spot; otherwise default
+        # to temp-based packing for genuinely new cells.
+        seed = load_storage_seed()
         # 1) Create new cells / open a new event when a fresh RPT run starts.
         for cell_id, r in running_now.items():
             if cell_id in removed:
                 continue
             c = by_id.get(cell_id)
             if c is None:
+                spot = seed.get(cell_id) or {}
                 c = {
                     "cellId":          cell_id,
                     "storageTemp":     r["temp"],
                     "soc":             r["soc"],
                     "rptType":         "Calendar Life RPT",
                     "assignedChannel": r["channel"],
-                    "assignedStorage": self._pack_chamber(data, r["temp"]),
-                    "storageShelf":    None,
-                    "storageSlot":     None,   # client packs into a free slot
+                    "assignedStorage": spot.get("chamber") or self._pack_chamber(data, r["temp"]),
+                    "storageShelf":    spot.get("shelf"),
+                    "storageSlot":     spot.get("slot"),   # client packs if None
                     "anchorDate":      r["start"],
-                    "events":          [{"start": r["start"], "returned": None}],
+                    "events":          [{"start": r["start"], "returned": None, "file": r.get("file")}],
                 }
                 cells.append(c)
                 by_id[cell_id] = c
@@ -770,7 +956,10 @@ class NewareScanner:
                 # is newer than the last recorded start.
                 if (last is None or last.get("returned") is not None) and r["start"] \
                         and (last is None or r["start"] > (last.get("start") or "")):
-                    evs.append({"start": r["start"], "returned": None})
+                    evs.append({"start": r["start"], "returned": None, "file": r.get("file")})
+                elif last is not None and last.get("returned") is None and r.get("file"):
+                    # Same run still going — keep the latest filename on it.
+                    last["file"] = r["file"]
                 c["assignedChannel"] = r["channel"]
 
         # 2) Derive run-state + schedule for every cell (safe to overwrite).
@@ -780,6 +969,12 @@ class NewareScanner:
             r = running_now.get(c.get("cellId"))
             open_event = bool(last and last.get("returned") is None)
             c["running"] = bool(r and r["live"] and open_event)
+            # Data-estimated off-test date = last time the RPT file was written.
+            # Surfaced as a pre-fill in the return picker so the user can confirm
+            # "yes, I pulled it when I thought I did." Persist once and never
+            # overwrite with None when the file ages out of the active batch.
+            if open_event and r and r.get("lastMod"):
+                c["estReturn"] = r["lastMod"]
             if last and last.get("returned"):
                 c["nextRptStart"] = _iso_add(last["returned"], rest)
             elif open_event:
@@ -899,7 +1094,7 @@ def api_data_post():
                 target.update(new_c)
 
         # rptCells, rptSettings, testLibrary -- always full overwrite
-        for key in ("rptCells", "rptSettings", "testLibrary", "storageConfig", "removedCells"):
+        for key in ("rptCells", "rptSettings", "testLibrary", "storageConfig", "removedCells", "archivedCells"):
             if key in new_data:
                 current[key] = new_data[key]
 
@@ -921,6 +1116,8 @@ def api_data_post():
 
         save_data(current)
         save_metadata(meta)
+        # Keep the storage seed in lock-step with the user's layout edits.
+        save_storage_seed(current)
 
         # Same treatment for data_stable.json: propagate non-auto-sync edits
         # wholesale, and refresh auto-sync metadata against the cells that
@@ -978,7 +1175,7 @@ def _propagate_to_stable(live_data, meta):
                 stable_c.update(live_c)
 
         # Other top-level keys (rptCells, rptSettings, testLibrary) — copy
-        for key in ("rptCells", "rptSettings", "testLibrary", "storageConfig", "removedCells"):
+        for key in ("rptCells", "rptSettings", "testLibrary", "storageConfig", "removedCells", "archive", "archivedCells"):
             if key in live_data:
                 stable[key] = live_data[key]
 
@@ -994,6 +1191,175 @@ def api_watcher_status():
 def api_watcher_scan():
     SCANNER.scan()
     return jsonify({"status": "ok", "last_scan": SCANNER.last_scan})
+
+
+@app.route("/api/open-folder", methods=["POST"])
+def api_open_folder():
+    """Open one of the configured watch folders in the OS file browser.
+    Restricted to the configured folders so we never open arbitrary paths."""
+    import subprocess
+    try:
+        body = request.get_json(force=True) or {}
+    except Exception:
+        body = {}
+    folder = body.get("folder")
+    norm = lambda p: os.path.normcase(os.path.normpath(str(p)))
+    allowed = {norm(f) for f in SCANNER.folders}
+    if not folder or norm(folder) not in allowed:
+        return jsonify({"error": "unknown folder"}), 400
+    try:
+        if sys.platform.startswith("win"):
+            os.startfile(folder)                       # noqa: S606 (trusted, configured path)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", folder])
+        else:
+            subprocess.Popen(["xdg-open", folder])
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/reimport-storage", methods=["POST"])
+def api_reimport_storage():
+    """Reset the storage layout from the lab Excel — and ONLY the layout: it
+    rewrites assignedStorage + shelf/slot for the active RPT cells the sheet
+    lists, then re-packs them. Archive, removedCells, schedules, events, and
+    cells the sheet doesn't mention are left untouched.
+
+    If an .xlsx is uploaded (multipart 'file'), it's parsed and also saved as
+    the new baseline (storage_excel.json) so future resets use the latest. With
+    no upload, the stored baseline is used."""
+    upload = request.files.get("file")
+    if upload is not None:
+        try:
+            excel = parse_storage_from_xlsx(upload.read())
+        except Exception as e:
+            return jsonify({"error": "could not read Excel: " + str(e)}), 400
+        if not excel:
+            return jsonify({"error": "no 'Cell ID' / 'Assigned Storage Chamber' columns found in an 'RPT Planner' sheet"}), 400
+        try:
+            with open(STORAGE_EXCEL_PATH, "w", encoding="utf-8") as f:
+                json.dump(excel, f, indent=0, sort_keys=True)
+        except OSError:
+            pass
+    else:
+        try:
+            with open(STORAGE_EXCEL_PATH, encoding="utf-8") as f:
+                excel = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            return jsonify({"error": "no Excel reference (storage_excel.json) found"}), 400
+    with _data_lock:
+        data = load_data()
+        cells = data.get("rptCells", [])
+        applied = 0
+        for c in cells:
+            spot = excel.get(c.get("cellId"))
+            if spot and spot.get("chamber"):
+                c["assignedStorage"] = spot["chamber"]
+                c["storageShelf"] = None
+                c["storageSlot"] = None
+                applied += 1
+
+        # Pack the just-cleared cells into free slots server-side (the client's
+        # auto-pack only runs once per session, so we can't rely on it here).
+        def shelves_of(chamber):
+            cfg = (data.get("storageConfig") or {}).get(chamber)
+            if isinstance(cfg, dict) and isinstance(cfg.get("shelves"), list) and cfg["shelves"]:
+                return [s.get("cap", 12) for s in cfg["shelves"]]
+            if isinstance(cfg, (int, float)) and cfg > 0:
+                return [12] * int(cfg)
+            return [12]
+
+        def cell_num(cid):
+            m = re.match(r"CRD_(\d+)_CID(\d+)", cid or "")
+            return (int(m.group(1)), int(m.group(2))) if m else (10**9, 10**9)
+
+        occ = {}  # chamber -> set of (shelf, slot)
+        for c in cells:
+            if c.get("assignedStorage") and c.get("storageSlot") is not None:
+                occ.setdefault(c["assignedStorage"], set()).add((c.get("storageShelf") or 0, c["storageSlot"]))
+        to_place = sorted(
+            [c for c in cells if c.get("assignedStorage") and c.get("storageSlot") is None],
+            key=lambda c: cell_num(c.get("cellId")))
+        for c in to_place:
+            taken = occ.setdefault(c["assignedStorage"], set())
+            placed = False
+            for sh, cap in enumerate(shelves_of(c["assignedStorage"])):
+                for sl in range(cap):
+                    if (sh, sl) not in taken:
+                        c["storageShelf"], c["storageSlot"] = sh, sl
+                        taken.add((sh, sl))
+                        placed = True
+                        break
+                if placed:
+                    break
+            # chambers full -> leaves it unplaced (shows in the tray)
+
+        # Flag (don't touch) active cells the sheet doesn't list — they may be
+        # done and want archiving, but that's the user's manual call.
+        listed = set(excel.keys())
+        unlisted = sorted(c.get("cellId") for c in cells
+                          if c.get("cellId") and c["cellId"] not in listed)
+
+        save_data(data)
+        # Reset the living seed to the placed cells from this Excel.
+        placement = {k: v for k, v in excel.items() if v.get("chamber")}
+        try:
+            tmp = STORAGE_SEED_PATH.with_suffix(".json.tmp")
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(placement, f, indent=0, sort_keys=True)
+            os.replace(tmp, STORAGE_SEED_PATH)
+        except OSError:
+            pass
+        _propagate_to_stable(data, load_metadata())
+    return jsonify({"status": "ok", "applied": applied, "unlisted": unlisted, "data": data})
+
+
+@app.route("/api/unarchive", methods=["POST"])
+def api_unarchive():
+    """Restore an archived calendar-life cell back to the planner: drop it from
+    removedCells (so the watcher manages it again), re-add it to rptCells with
+    its saved history + last-known storage spot, and remove it from the archive.
+    The next scan recomputes its run-state/schedule from the events."""
+    try:
+        body = request.get_json(force=True) or {}
+    except Exception:
+        body = {}
+    cid = body.get("cellId")
+    if not cid:
+        return jsonify({"error": "missing cellId"}), 400
+    with _data_lock:
+        data = load_data()
+        arch = data.get("archivedCells") or {}
+        a = arch.get(cid)
+        if not a:
+            return jsonify({"error": "cell not in archive"}), 404
+        data["removedCells"] = [x for x in data.get("removedCells", []) if x != cid]
+        cells = data.setdefault("rptCells", [])
+        if not any(c.get("cellId") == cid for c in cells):
+            spot = load_storage_seed().get(cid) or {}
+            evs = a.get("events") or []
+            last = evs[-1] if evs else None
+            rest = (data.get("rptSettings") or {}).get("restDays", 28)
+            nrs = _iso_add(last["returned"], rest) if (last and last.get("returned")) else None
+            cells.append({
+                "cellId":          cid,
+                "storageTemp":     a.get("storageTemp"),
+                "soc":             a.get("soc"),
+                "rptType":         a.get("rptType") or "Calendar Life RPT",
+                "assignedChannel": None,
+                "assignedStorage": spot.get("chamber"),
+                "storageShelf":    spot.get("shelf"),
+                "storageSlot":     spot.get("slot"),
+                "anchorDate":      (evs[0].get("start") if evs else None),
+                "events":          evs,
+                "nextRptStart":    nrs,
+            })
+        arch.pop(cid, None)
+        data["archivedCells"] = arch
+        save_data(data)
+        _propagate_to_stable(data, load_metadata())
+    return jsonify({"status": "ok", "data": data})
 
 
 @app.route("/api/reset", methods=["POST"])
