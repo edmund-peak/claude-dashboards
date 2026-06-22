@@ -3211,7 +3211,20 @@ function CellSquare({ cell, idx, selected, dim, ghost, draggable, solid, showBar
       draggable={!!draggable}
       onDragStart={draggable ? (e) => { e.dataTransfer.setData("text/plain", String(idx)); e.dataTransfer.effectAllowed = "move"; onDragStartCell && onDragStartCell(idx); } : undefined}
       onClick={(e) => { e.stopPropagation(); onSelect(idx); }}
-      title={cell.cellId + " · SOC " + (cell.soc != null ? Math.round(cell.soc * 100) + "%" : "—") + " · " + (cell.storageTemp || "—") + (testing ? " · ON TEST" : awaiting ? " · AWAITING RETURN" : "")}
+      title={(() => {
+        const base = cell.cellId + " · SOC " + (cell.soc != null ? Math.round(cell.soc * 100) + "%" : "—") + " · " + (cell.storageTemp || "—");
+        if (testing) {
+          const lastEv = lastEvent(cell);
+          const hrs = lastEv && lastEv.startTs ? hoursSince(lastEv.startTs) : (lastEv && lastEv.start ? hoursSince(lastEv.start) : null);
+          const totalHrs = RPT_ON_DAYS * 24;
+          if (hrs != null) {
+            const remaining = totalHrs - hrs;
+            return base + " · ON TEST · " + hrs.toFixed(1) + "h elapsed, " + (remaining > 0 ? remaining.toFixed(1) + "h remaining" : "ready to return");
+          }
+          return base + " · ON TEST";
+        }
+        return base + (awaiting ? " · AWAITING RETURN" : "");
+      })()}
       style={{
         position: "relative", boxSizing: "border-box", width: "100%", aspectRatio: "1 / 1",
         borderRadius: 5, cursor: draggable ? "grab" : "pointer",
@@ -3243,11 +3256,10 @@ function CellSquare({ cell, idx, selected, dim, ghost, draggable, solid, showBar
 }
 
 // One grid square: a drop target that holds an optional cell.
-function StorageSlot({ occupant, occupantIdx, ghost, ghostIdx, chamber, shelf, slot, selectedIdx, dim, onSelect, onConfirmReturn, onDropCell }) {
+function StorageSlot({ occupant, occupantIdx, ghost, ghostIdx, staged, stagedIdx, chamber, shelf, slot, selectedIdx, dim, onSelect, onConfirmReturn, onDropCell }) {
   const [over, setOver] = React.useState(false);
-  // A "ghost" is a cell whose home slot is here but is physically OUT on an RPT
-  // run — shown faint so the slot reads as reserved-but-empty until the user
-  // confirms its return to storage. Awaiting (test-done) ghosts get a one-tap ✓.
+  // Ghost = cell whose home slot is here but is physically out on an RPT run.
+  // Staged = manually moved to the Testing Area before the watcher has detected the file.
   const renderGhost = () => {
     const onT = isTesting(ghost);
     const shortId = ghost.cellId.replace("CRD_", "").replace("CID", "");
@@ -3269,6 +3281,21 @@ function StorageSlot({ occupant, occupantIdx, ghost, ghostIdx, chamber, shelf, s
       </div>
     );
   };
+  const renderStaged = () => {
+    const shortId = staged.cellId.replace("CRD_", "").replace("CID", "");
+    return (
+      <div onClick={() => onSelect && onSelect(stagedIdx)}
+        draggable={stagedIdx != null}
+        onDragStart={(e) => { e.dataTransfer.setData("text/plain", String(stagedIdx)); e.dataTransfer.effectAllowed = "move"; }}
+        title={`${staged.cellId} — moved to Testing Area (waiting for cycler to confirm)`}
+        style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", borderRadius: 5, border: "1.5px dashed #a78bfa66",
+          background: "repeating-linear-gradient(45deg, rgba(167,139,250,0.04), rgba(167,139,250,0.04) 4px, transparent 4px, transparent 8px)",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "grab", opacity: 0.55 }}>
+        <span style={{ fontSize: 9, color: "#5b6573", fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.1 }}>{shortId}</span>
+        <span style={{ fontSize: 7.5, color: "#a78bfa", marginTop: 1 }}>▷ staged</span>
+      </div>
+    );
+  };
   return (
     <div
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (!over) setOver(true); }}
@@ -3279,7 +3306,9 @@ function StorageSlot({ occupant, occupantIdx, ghost, ghostIdx, chamber, shelf, s
         ? <CellSquare cell={occupant} idx={occupantIdx} selected={selectedIdx === occupantIdx} dim={dim} draggable onSelect={onSelect} />
         : ghost
           ? renderGhost()
-          : <div style={{ width: "100%", aspectRatio: "1 / 1", borderRadius: 5, border: "1px dashed #1f2630" }} />}
+          : staged
+            ? renderStaged()
+            : <div style={{ width: "100%", aspectRatio: "1 / 1", borderRadius: 5, border: "1px dashed #1f2630" }} />}
     </div>
   );
 }
@@ -3441,7 +3470,8 @@ function StorageView({ data, persist, tempFilter, selectedIdx, setSelectedIdx, o
   const moveToTestArea = async (rptIdx) => {
     const nd = JSON.parse(JSON.stringify(data));
     nd.rptCells[rptIdx].inTestArea = true;
-    nd.rptCells[rptIdx].storageSlot = null;
+    // Don't clear storageSlot — the storage grid already hides inTestArea cells,
+    // and preserving the slot means the cell returns to its original spot automatically.
     await persist(nd);
   };
   const unplace = async (rptIdx) => { const nd = JSON.parse(JSON.stringify(data)); nd.rptCells[rptIdx].storageSlot = null; nd.rptCells[rptIdx].inTestArea = false; await persist(nd); };
@@ -3540,11 +3570,13 @@ function StorageView({ data, persist, tempFilter, selectedIdx, setSelectedIdx, o
           const occCount = cells.filter(c => c.assignedStorage === ch && c.storageSlot != null).length;
           const cap = shelves.reduce((s, sh) => s + sh.cap, 0);
           const bySlot = {};
-          const ghostBySlot = {};   // cells whose home slot is here but are out on an RPT run
+          const ghostBySlot = {};   // cells out on an RPT run (watcher confirmed)
+          const stagedBySlot = {};  // cells manually moved to Testing Area, not yet confirmed by watcher
           cells.forEach((c, i) => {
-            if (c.assignedStorage !== ch || c.storageSlot == null || c.inTestArea) return;
+            if (c.assignedStorage !== ch || c.storageSlot == null) return;
             const k = (c.storageShelf || 0) + ":" + c.storageSlot;
             if (isOnTest(c)) ghostBySlot[k] = { c, i };
+            else if (c.inTestArea) stagedBySlot[k] = { c, i };
             else bySlot[k] = { c, i };
           });
           const lastShelfOccupied = cells.some(c => c.assignedStorage === ch && (c.storageShelf || 0) >= shelves.length - 1 && shelves.length > 1 && c.storageSlot != null);
@@ -3581,8 +3613,10 @@ function StorageView({ data, persist, tempFilter, selectedIdx, setSelectedIdx, o
                     {Array.from({ length: shelf.cap }).map((_, sl) => {
                       const hit = bySlot[sh + ":" + sl];
                       const gh = !hit ? ghostBySlot[sh + ":" + sl] : null;
+                      const st = !hit && !gh ? stagedBySlot[sh + ":" + sl] : null;
                       return <StorageSlot key={sl} occupant={hit ? hit.c : null} occupantIdx={hit ? hit.i : null}
                         ghost={gh ? gh.c : null} ghostIdx={gh ? gh.i : null}
+                        staged={st ? st.c : null} stagedIdx={st ? st.i : null}
                         chamber={ch} shelf={sh} slot={sl} selectedIdx={selectedIdx} dim={hit ? dimmed(hit.c) : false}
                         onSelect={selectCell} onConfirmReturn={onReturn} onDropCell={moveCell} />;
                     })}

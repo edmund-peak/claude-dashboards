@@ -966,8 +966,6 @@ class NewareScanner:
         # Only "CLD"/"CAL" files qualify — not one-time RPTs on cycle-life cells.
         running_now = {}
         for info in by_channel.values():
-            if info.get("test_type") != "RPT":
-                continue
             if not info.get("is_calendar_life"):
                 continue
             mod = info.get("file_modified")
