@@ -45,6 +45,7 @@ DATA_STABLE_PATH = ROOT / "data_stable.json"
 META_PATH        = ROOT / "metadata.json"  # user metadata for auto-sync channels
 STORAGE_SEED_PATH  = ROOT / "storage_seed.json"   # living layout memory (updated on edits)
 STORAGE_EXCEL_PATH = ROOT / "storage_excel.json"  # immutable Excel reference for re-import
+RPT_SCHEDULE_SEED_PATH = ROOT / "rpt_schedule_seed.json"  # one-time next-RPT-start seed (Excel 'RPT Planner' col J)
 STATIC_DIR       = ROOT / "static"
 
 AUTO_SYNC_CHAMBERS = {
@@ -270,6 +271,16 @@ def load_storage_seed():
     Seeded from the lab's Excel, then kept in sync with the user's edits."""
     try:
         with open(STORAGE_SEED_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def load_rpt_schedule_seed():
+    """One-time next-RPT-start seed: { cellId: "YYYY-MM-DD" }, exported from the
+    lab Excel 'RPT Planner' sheet column J (Next RPT Start)."""
+    try:
+        with open(RPT_SCHEDULE_SEED_PATH, encoding="utf-8") as f:
             return json.load(f)
     except (OSError, json.JSONDecodeError):
         return {}
@@ -755,6 +766,7 @@ class NewareScanner:
                 start_ct = min_ctime_by_test_key.get(
                     info["test_key"], info["file_created"])
                 ch["startDate"]   = start_ct.strftime("%Y-%m-%d")
+                ch["startTs"]     = start_ct.isoformat() if start_ct else None
                 cm = by_cell_meta.get(cell_id, {})
                 ch["project"]       = cm.get("project")
                 ch["analysisGroup"] = cm.get("analysisGroup")
@@ -762,6 +774,7 @@ class NewareScanner:
                 ch["durationWeeks"] = cm.get("durationWeeks")
 
             self._update_archive(all_files, active_test_keys, data)
+            self._seed_rpt_schedule(data)
             self._sync_rpt_cells(by_channel, min_ctime_by_test_key, data)
             self._seed_storage(data)
             save_data(data)
@@ -809,7 +822,7 @@ class NewareScanner:
         Lives in data['archive'] keyed by cellId:
 
             { "<cellId>": {
-                "tests": { "<testType>": {"first": iso, "last": iso} },
+                "tests": { "<testType>": {"first": iso, "last": iso, "file": name} },
                 "lastSeen": iso } }
 
         One small entry per cell, two dates per distinct test — deliberately
@@ -832,21 +845,24 @@ class NewareScanner:
                 continue
             first = fc or fm
             last = fm or fc
+            fn = f.get("filename")
             e = per.get((cid, tt))
             if e is None:
-                per[(cid, tt)] = [first, last]
+                # [first, last, file-of-latest]
+                per[(cid, tt)] = [first, last, fn]
             else:
                 if first < e[0]:
                     e[0] = first
                 if last > e[1]:
                     e[1] = last
+                    e[2] = fn  # keep the filename from the most recent run
 
         arch = {}
-        for (cid, tt), (first, last) in per.items():
+        for (cid, tt), (first, last, fn) in per.items():
             rec = arch.setdefault(cid, {"tests": {}, "lastSeen": None})
             first_s = first.strftime("%Y-%m-%d")
             last_s = last.strftime("%Y-%m-%d")
-            rec["tests"][tt] = {"first": first_s, "last": last_s}
+            rec["tests"][tt] = {"first": first_s, "last": last_s, "file": fn}
             if not rec["lastSeen"] or last_s > rec["lastSeen"]:
                 rec["lastSeen"] = last_s
         data["archive"] = arch
@@ -875,12 +891,53 @@ class NewareScanner:
         data["storageSeeded"] = True
         print("[SEED] storage initialized: {} cells placed".format(applied))
 
+    def _seed_rpt_schedule(self, data):
+        """One-time seed of each cell's NEXT RPT start from the lab Excel
+        (rpt_schedule_seed.json, exported from 'RPT Planner' col J). Sets
+        `nextRptOverride` per cell so the upcoming RPT is pinned to the lab's
+        planned date instead of the return+rest estimate (which, for historical
+        cells, was computed off test-end and under-counts storage time).
+
+        The override is honoured by the schedule-derive step below until the
+        cell actually starts that RPT run (a new event is appended), at which
+        point it is cleared and scheduling reverts to the normal
+        physical-return + rest cadence. Runs once (guarded by
+        'rptScheduleSeeded'); if the seed file is absent the flag is not set so
+        it retries on a later scan.
+        """
+        if data.get("rptScheduleSeeded"):
+            return
+        seed = load_rpt_schedule_seed()
+        if not seed:
+            return
+        by_id = {c.get("cellId"): c for c in data.get("rptCells", [])}
+        applied = skipped_on_test = 0
+        for cid, start in seed.items():
+            c = by_id.get(cid)
+            if not (c and start):
+                continue
+            # Only pin RESTING cells (last event closed). A cell currently on
+            # test / awaiting return is left to recompute its next start from
+            # its actual physical return date (returned + rest), not the Excel.
+            evs = c.get("events", [])
+            last = evs[-1] if evs else None
+            if last and last.get("returned") is None:
+                skipped_on_test += 1
+                continue
+            c["nextRptOverride"] = start
+            applied += 1
+        data["rptScheduleSeeded"] = True
+        print("[SEED] RPT schedule seeded: {} resting cells pinned to Excel next-start ({} on-test skipped)".format(applied, skipped_on_test))
+
     def _sync_rpt_cells(self, by_channel, min_ctime_by_test_key, data):
         """Auto-manage data['rptCells'] from the running file record.
 
         The schedule is event-driven, mirroring the lab's spreadsheet: each
-        detected RPT run is an event {start, returned}. The watcher revises
-        the schedule as cells run:
+        detected RPT run is an event {start, offTest, returned}. `offTest` is the
+        auto-detected end of cycling (last file write); `returned` is the
+        user-logged date the cell physically went back to storage. The 28-day
+        storage clock — and thus the next RPT — keys off `returned`, never
+        offTest. The watcher revises the schedule as cells run:
 
         - First RPT seen for a cell  -> create the cell (storage temp + SOC
           from the filename, temp-matched least-full storage chamber) with an
@@ -918,6 +975,7 @@ class NewareScanner:
             running_now[info["cell_id"]] = {
                 "live":    mod is not None and (now - mod) <= updating,
                 "start":   start.strftime("%Y-%m-%d") if start else None,
+                "startTs": start.isoformat() if start else None,   # full timestamp (file creation)
                 "lastMod": mod.strftime("%Y-%m-%d") if mod else None,
                 "channel": info["channel_id"],
                 "temp":    info.get("temp"),
@@ -945,7 +1003,7 @@ class NewareScanner:
                     "storageShelf":    spot.get("shelf"),
                     "storageSlot":     spot.get("slot"),   # client packs if None
                     "anchorDate":      r["start"],
-                    "events":          [{"start": r["start"], "returned": None, "file": r.get("file")}],
+                    "events":          [{"start": r["start"], "startTs": r.get("startTs"), "offTest": None, "returned": None, "file": r.get("file")}],
                 }
                 cells.append(c)
                 by_id[cell_id] = c
@@ -956,10 +1014,17 @@ class NewareScanner:
                 # is newer than the last recorded start.
                 if (last is None or last.get("returned") is not None) and r["start"] \
                         and (last is None or r["start"] > (last.get("start") or "")):
-                    evs.append({"start": r["start"], "returned": None, "file": r.get("file")})
-                elif last is not None and last.get("returned") is None and r.get("file"):
-                    # Same run still going — keep the latest filename on it.
-                    last["file"] = r["file"]
+                    evs.append({"start": r["start"], "startTs": r.get("startTs"), "offTest": None, "returned": None, "file": r.get("file")})
+                    # The seeded next-RPT start has begun — consume the override
+                    # so future cycles schedule off the real physical return.
+                    c["nextRptOverride"] = None
+                elif last is not None and last.get("returned") is None:
+                    # Same run still going — keep the latest filename and stamp the
+                    # start timestamp on the open event (idempotent; same value).
+                    if r.get("file"):
+                        last["file"] = r["file"]
+                    if r.get("startTs") and not last.get("startTs"):
+                        last["startTs"] = r["startTs"]
                 c["assignedChannel"] = r["channel"]
 
         # 2) Derive run-state + schedule for every cell (safe to overwrite).
@@ -975,10 +1040,29 @@ class NewareScanner:
             # overwrite with None when the file ages out of the active batch.
             if open_event and r and r.get("lastMod"):
                 c["estReturn"] = r["lastMod"]
-            if last and last.get("returned"):
-                c["nextRptStart"] = _iso_add(last["returned"], rest)
-            elif open_event:
+                # Stamp the open event's own off-test date (when cycling actually
+                # finished), kept distinct from the user-logged physical return.
+                last["offTest"] = r["lastMod"]
+            # Backfill offTest on every event missing it (idempotent). Closed
+            # events: the recorded end ~= off-test, so reuse `returned`. Open
+            # events with no file activity in the batch: fall back to the cell's
+            # last estimate, else the nominal due date (start + duration).
+            # offTest is display-only (it drives the shown test duration); the
+            # schedule keys off `returned`, never off offTest.
+            for e in evs:
+                if e.get("offTest"):
+                    continue
+                if e.get("returned"):
+                    e["offTest"] = e["returned"]
+                else:
+                    e["offTest"] = c.get("estReturn") or _iso_add(e.get("start"), duration)
+            if open_event:
                 c["nextRptStart"] = None          # on test / awaiting return
+            elif c.get("nextRptOverride"):
+                # Lab-Excel-pinned next start (until that RPT run begins).
+                c["nextRptStart"] = c["nextRptOverride"]
+            elif last and last.get("returned"):
+                c["nextRptStart"] = _iso_add(last["returned"], rest)
             else:
                 c["nextRptStart"] = c.get("anchorDate")
             c["nextRptMonth"] = str(sum(1 for e in evs if e.get("returned"))) + "M"
@@ -1027,9 +1111,16 @@ def index():
 @app.route("/api/data", methods=["GET"])
 def api_data_get():
     view = request.args.get("view", "live")
-    if view == "stable":
-        return jsonify(load_stable_data())
-    return jsonify(load_data())
+    data = load_stable_data() if view == "stable" else load_data()
+    # Per-cell notes live in metadata.json (durable across scanner rebuilds),
+    # keyed by cellId. Surface them on the data blob the UI consumes.
+    _meta = load_metadata()
+    data["cellNotes"] = _meta.get("cell_notes", {})
+    # Per-cell user metadata (project/analysisGroup/…) keyed by cellId, so the
+    # drawer can show & edit Project for ANY cell — including calendar-life RPT
+    # cells that aren't currently on a channel.
+    data["cellMeta"] = _meta.get("by_cell", {})
+    return jsonify(data)
 
 
 @app.route("/api/data", methods=["POST"])
@@ -1097,6 +1188,19 @@ def api_data_post():
         for key in ("rptCells", "rptSettings", "testLibrary", "storageConfig", "removedCells", "archivedCells"):
             if key in new_data:
                 current[key] = new_data[key]
+
+        # Per-cell notes are durable user metadata, keyed by cellId — store
+        # them in metadata.json so the scanner's rebuilds never wipe them.
+        if "cellNotes" in new_data and isinstance(new_data["cellNotes"], dict):
+            meta["cell_notes"] = {k: v for k, v in new_data["cellNotes"].items() if v}
+
+        # Project edits from the drawer (any cell, keyed by cellId). Merge into
+        # by_cell so other metadata fields (analysisGroup/cellFormat/…) survive.
+        if "cellProjects" in new_data and isinstance(new_data["cellProjects"], dict):
+            by_cell_meta = meta.setdefault("by_cell", {})
+            for cid, proj in new_data["cellProjects"].items():
+                entry = by_cell_meta.setdefault(cid, {})
+                entry["project"] = (proj or None)
 
         # Re-apply the now-updated metadata to live data so the immediate
         # response reflects the user's edit. Without this, the user wouldn't
@@ -1193,11 +1297,91 @@ def api_watcher_scan():
     return jsonify({"status": "ok", "last_scan": SCANNER.last_scan})
 
 
+def _win_focus_explorer(folder):
+    """Bring the Explorer window for `folder` to the foreground.
+
+    Windows suppresses foreground changes requested by a background process
+    (our Flask server), so a freshly opened Explorer window just blinks in the
+    taskbar. We work around it with the standard AttachThreadInput trick: attach
+    our thread's input to the current foreground thread and the target window's
+    thread, which lets SetForegroundWindow actually take. Best-effort and silent
+    on any failure. Runs on a short delay so Explorer has time to create the
+    window. ctypes only (stdlib) — HWND args are typed so 64-bit handles aren't
+    truncated.
+    """
+    import ctypes, time
+    from ctypes import wintypes
+    try:
+        u = ctypes.windll.user32
+        k = ctypes.windll.kernel32
+    except Exception:
+        return
+    u.GetForegroundWindow.restype = wintypes.HWND
+    u.SetForegroundWindow.argtypes = [wintypes.HWND]
+    u.BringWindowToTop.argtypes = [wintypes.HWND]
+    u.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
+    u.IsWindowVisible.argtypes = [wintypes.HWND]
+    u.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    u.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    u.GetWindowTextLengthW.argtypes = [wintypes.HWND]
+    u.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+    u.GetWindowThreadProcessId.restype = wintypes.DWORD
+
+    leaf = os.path.basename(os.path.normpath(folder)).lower()  # Explorer titles a window by its leaf folder name
+    found = []
+    PROTO = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+    def _cb(hwnd, _):
+        if not u.IsWindowVisible(hwnd):
+            return True
+        cls = ctypes.create_unicode_buffer(64)
+        u.GetClassNameW(hwnd, cls, 64)
+        if cls.value != "CabinetWClass":   # the file-Explorer window class
+            return True
+        n = u.GetWindowTextLengthW(hwnd)
+        tb = ctypes.create_unicode_buffer(n + 1)
+        u.GetWindowTextW(hwnd, tb, n + 1)
+        t = tb.value.lower()
+        if leaf and (t == leaf or t.endswith(leaf)):
+            found.append(hwnd)
+            return False
+        return True
+
+    cb = PROTO(_cb)
+    hwnd = None
+    for _ in range(20):                      # ~3s of polling while Explorer opens
+        found.clear()
+        u.EnumWindows(cb, 0)
+        if found:
+            hwnd = found[0]
+            break
+        time.sleep(0.15)
+    if not hwnd:
+        return
+    cur = k.GetCurrentThreadId()
+    fg = u.GetForegroundWindow()
+    fg_tid = u.GetWindowThreadProcessId(fg, None) if fg else 0
+    tgt_tid = u.GetWindowThreadProcessId(hwnd, None)
+    u.ShowWindow(hwnd, 9)                     # SW_RESTORE (un-minimize)
+    try:
+        if fg_tid:
+            u.AttachThreadInput(fg_tid, cur, True)
+        if tgt_tid:
+            u.AttachThreadInput(tgt_tid, cur, True)
+        u.BringWindowToTop(hwnd)
+        u.SetForegroundWindow(hwnd)
+    finally:
+        if fg_tid:
+            u.AttachThreadInput(fg_tid, cur, False)
+        if tgt_tid:
+            u.AttachThreadInput(tgt_tid, cur, False)
+
+
 @app.route("/api/open-folder", methods=["POST"])
 def api_open_folder():
     """Open one of the configured watch folders in the OS file browser.
     Restricted to the configured folders so we never open arbitrary paths."""
-    import subprocess
+    import subprocess, threading
     try:
         body = request.get_json(force=True) or {}
     except Exception:
@@ -1209,7 +1393,11 @@ def api_open_folder():
         return jsonify({"error": "unknown folder"}), 400
     try:
         if sys.platform.startswith("win"):
-            os.startfile(folder)                       # noqa: S606 (trusted, configured path)
+            subprocess.Popen(["explorer", folder])
+            # Force the new window to the foreground (Windows blocks background
+            # processes from doing this directly) — on a daemon thread so the
+            # request returns immediately.
+            threading.Thread(target=_win_focus_explorer, args=(folder,), daemon=True).start()
         elif sys.platform == "darwin":
             subprocess.Popen(["open", folder])
         else:

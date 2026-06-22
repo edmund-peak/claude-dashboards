@@ -27,6 +27,16 @@
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
   }
+  /* Hover tooltip for truncated run filenames — pops the full name instantly. */
+  .fn-tip { position: relative; cursor: default; }
+  .fn-tip:hover::after {
+    content: attr(data-full);
+    position: absolute; left: 0; bottom: calc(100% + 4px); z-index: 50;
+    white-space: normal; word-break: break-all; max-width: 460px; width: max-content;
+    background: #161b22; color: #e2e6ed; border: 1px solid #2a3340; border-radius: 6px;
+    padding: 6px 9px; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.4;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5); pointer-events: none;
+  }
 </style>
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -427,8 +437,43 @@ const SEED_DATA = (() => {
 {cellId:"CRD_00_CID0271",nextRptMonth:"2M",soc:0.0,storageTemp:"45°C",assignedChannel:"Chamber_9-14",assignedStorage:"Chamber_3",nextRptStart:null,capacityMah:50.0,rptType:"Calendar Life RPT",events:[{start:"2026-02-23",returned:"2026-03-02"},{start:"2026-04-02",returned:"2026-04-06"}]},
   ];
 
+  // Retired calendar-life cells — full per-cycle RPT history, no longer in the
+  // planner. These power the Archive tab's "Calendar Life" rows.
+  const archivedCells = {
+    "CRD_00_CID0099": {
+      soc: 1.0, storageTemp: "25°C", rptType: "Calendar Life RPT", archivedOn: "2026-05-20",
+      events: [
+        { start: "2025-08-04", returned: "2025-08-08", file: "CRD_00_CID0099_Po_CLD-0M-100SOC_25C_127.0.0.1-BTS82-5-3-1-101.xlsx" },
+        { start: "2025-09-08", returned: "2025-09-12", file: "CRD_00_CID0099_Po_CLD-1M-100SOC_25C_127.0.0.1-BTS82-5-3-1-108.xlsx" },
+        { start: "2025-11-10", returned: "2025-11-14", file: "CRD_00_CID0099_Po_CLD-3M-100SOC_25C_127.0.0.1-BTS82-5-3-1-120.xlsx" },
+        { start: "2026-02-09", returned: "2026-02-13", file: "CRD_00_CID0099_Po_CLD-6M-100SOC_25C_127.0.0.1-BTS82-5-3-1-140.xlsx" },
+      ],
+    },
+    "CRD_05_CID0012": {
+      soc: 0.5, storageTemp: "45°C", rptType: "Calendar Life RPT", archivedOn: "2026-04-02",
+      events: [
+        { start: "2025-10-06", returned: "2025-10-10", file: "CRD_05_CID0012_Po_CLD-0M-050SOC_45C_127.0.0.1-BTS82-4-1-2-201.xlsx" },
+        { start: "2025-11-10", returned: "2025-11-14", file: "CRD_05_CID0012_Po_CLD-1M-050SOC_45C_127.0.0.1-BTS82-4-1-2-209.xlsx" },
+        { start: "2026-01-12", returned: "2026-01-16", file: "CRD_05_CID0012_Po_CLD-3M-050SOC_45C_127.0.0.1-BTS82-4-1-2-221.xlsx" },
+      ],
+    },
+  };
 
-  return { chambers, testLibrary, rptSettings, rptCells };
+  // Folder-sweep archive — every test a cell has finished, by type+date range.
+  // These power the Archive tab's non-calendar rows.
+  const archive = {
+    "CRD_00_CID0301": { lastSeen: "2026-03-18", tests: {
+      "Formation": { first: "2025-12-01", last: "2025-12-05" },
+      "HPPC": { first: "2026-01-10", last: "2026-01-11" },
+      "Cycle Life": { first: "2026-01-15", last: "2026-03-18" },
+    } },
+    "CRD_11_CID0007": { lastSeen: "2026-02-28", tests: {
+      "Formation": { first: "2026-01-04", last: "2026-01-08" },
+      "EIS": { first: "2026-02-27", last: "2026-02-28" },
+    } },
+  };
+
+  return { chambers, testLibrary, rptSettings, rptCells, archivedCells, archive };
 })();
 
 // ─── Helpers ───
@@ -440,6 +485,64 @@ const addDays = (dateStr, days) => {
 const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
 const fmtDate = (d) => { if (!d) return "—"; const dt = new Date(d + "T00:00:00"); return dt.toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
 const fmtDateFull = (d) => { if (!d) return "—"; const dt = new Date(d + "T00:00:00"); return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); };
+// Full timestamp (ISO datetime, e.g. event.startTs) → "Jun 17, 3:42 PM". Falls
+// back to a date-only string if only a "YYYY-MM-DD" was recorded (older data).
+const fmtDateTime = (ts) => {
+  if (!ts) return "—";
+  const d = new Date(ts.length <= 10 ? ts + "T00:00:00" : ts);
+  if (isNaN(d.getTime())) return "—";
+  const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return ts.length <= 10 ? datePart : datePart + ", " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+};
+// Hours elapsed since an ISO timestamp (null if unparseable). For RPT "hours on test".
+const hoursSince = (ts) => {
+  if (!ts) return null;
+  const d = new Date(ts.length <= 10 ? ts + "T00:00:00" : ts);
+  if (isNaN(d.getTime())) return null;
+  return (Date.now() - d.getTime()) / 3600000;
+};
+
+// Display name for a Neware run file: cut off after the temperature token
+// (e.g. "…_60C"), dropping the trailing IP/channel/sequence junk. Strips the
+// .xlsx extension. The full filename is still shown on hover.
+const shortFileName = (fn) => {
+  if (!fn) return fn;
+  const name = fn.replace(/\.xlsx$/i, "");
+  const m = name.match(/^(.*?\d{1,3}\s*C)(?:_|\b)/i);
+  return m ? m[1] : name;
+};
+
+// Extract the Neware channel ID from a run filename — the last underscore
+// segment, with the IP prefix stripped. E.g. "…_127.0.0.1-BTS82-5-3-1-101.xlsx"
+// → "BTS82-5-3-1-101".
+const channelFromFile = (fn) => {
+  if (!fn) return null;
+  const name = fn.replace(/\.xlsx$/i, "");
+  const parts = name.split("_");
+  const last = parts[parts.length - 1];
+  return last.replace(/^[\d.]+\-/, ""); // strip leading IP like "127.0.0.1-"
+};
+
+// Human test-type label derived from the run filename:
+//   CYLT-…-RPT -> "Cycle Life"
+//   CLD-{N}M   -> "Calendar Life"
+//   CYLT-…-RPT  -> "Cycle Life"
+//   CLD-{N}M    -> "Calendar Life"
+//   _FM_ or FM  -> "Formation"
+//   0.1C or CFM -> "Formation"
+//   HPPC        -> "HPPC"
+//   EIS         -> "EIS"
+//   anything else -> "Other"
+const testTypeLabel = (fn) => {
+  if (!fn) return "Other";
+  const up = fn.toUpperCase();
+  if (/CYLT-.*-RPT/.test(up)) return "Cycle Life";
+  if (/CLD-\d+M/.test(up)) return "Calendar Life";
+  if (/0\.1C|[_-]FM[_-]|\bFM\b|CFM/.test(up)) return "Formation";
+  if (/HPPC/.test(up)) return "HPPC";
+  if (/\bEIS\b/.test(up)) return "EIS";
+  return "Other";
+};
 
 const tempColor = (t) => {
   if (t?.includes("25")) return "#2dd4bf";
@@ -496,11 +599,19 @@ const RPT_PERIOD_DAYS = 32, RPT_ON_DAYS = 4;
 // Run state, driven by the watcher (`running`) + the event log.
 const lastEvent = (c) => (c && c.events && c.events.length) ? c.events[c.events.length - 1] : null;
 const daysSinceDate = (s) => { const t = new Date(); t.setHours(0, 0, 0, 0); return Math.floor((t - new Date(s + "T00:00:00")) / 86400000); };
-// On test = file writing now, OR an open run still inside its ~4-day test window.
-const isTesting = (c) => { if (c && c.running) return true; const e = lastEvent(c); return !!(e && !e.returned && e.start && daysSinceDate(e.start) <= RPT_ON_DAYS + 3); };
-// Awaiting return = the run is open but its test window has passed (needs a return date).
+// On test = the cycler is actively writing, OR we're still inside the ~96h (RPT_ON_DAYS)
+// test window measured from the run start. The fixed window is deliberate: the file
+// info reaches us with a delay, so we trust the nominal 96h as "end of test" rather
+// than flipping the instant `running` goes false.
+const isTesting = (c) => {
+  if (c && c.running) return true;
+  const e = lastEvent(c);
+  return !!(e && !e.returned && e.start && daysSinceDate(e.start) < RPT_ON_DAYS);
+};
+// Awaiting return = the run is open but its 96h window has passed (and it isn't
+// actively writing) — the test is done and the cell needs a physical return confirm.
 const isAwaitingReturn = (c) => { const e = lastEvent(c); return !!(e && !e.returned) && !isTesting(c); };
-const isOnTest = (c) => isTesting(c) || isAwaitingReturn(c); // physically out of its storage slot
+const isOnTest = (c) => isTesting(c) || isAwaitingReturn(c); // any open run → physically out of its storage slot
 
 // Weekends / business-day math for the "returned to storage on" quick picks.
 const isWeekend = (d) => { const g = new Date(d + "T00:00:00").getDay(); return g === 0 || g === 6; };
@@ -883,6 +994,7 @@ function App() {
   const [loading, setLoading] = React.useState(true);
   const [editModal, setEditModal] = React.useState(null);
   const [rptModal, setRptModal] = React.useState(null);
+  const [openCellId, setOpenCellId] = React.useState(null); // unified cell drawer, keyed by cellId
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [expandedChambers, setExpandedChambers] = React.useState(new Set());
   const [lastSynced, setLastSynced] = React.useState(null);
@@ -940,7 +1052,18 @@ function App() {
       try {
         const fresh = await loadData(viewMode);
         if (fresh && fresh.rptCells) {
-          setData(fresh);
+          // Preserve notes from current state if the server didn't return any
+          // (happens when Flask hasn't been restarted since the notes feature
+          // was added — avoids wiping unsaved notes every 10s).
+          setData(prev => {
+            if (!fresh.cellNotes || Object.keys(fresh.cellNotes).length === 0) {
+              fresh.cellNotes = prev.cellNotes || {};
+            }
+            // Same guard for per-cell metadata (project) — don't drop an edit if
+            // the server predates the cellMeta feature (i.e. hasn't restarted).
+            if (!fresh.cellMeta) fresh.cellMeta = prev.cellMeta || {};
+            return fresh;
+          });
           setLastSynced(new Date());
         }
       } catch (e) { /* silent fail on background refresh */ }
@@ -965,6 +1088,27 @@ function App() {
     await saveData(newData);
     setLastSynced(new Date());
   }, []);
+
+  // Move a calendar-life cell to the archive by cellId (from the unified
+  // drawer, which any view can open). Mirrors RptTab's handleRemove.
+  const handleArchiveCell = async (cellId) => {
+    const nd = JSON.parse(JSON.stringify(data));
+    const idx = (nd.rptCells || []).findIndex(c => c.cellId === cellId);
+    if (idx < 0) return;
+    const cell = nd.rptCells[idx];
+    nd.removedCells = nd.removedCells || [];
+    if (cell.cellId && !nd.removedCells.includes(cell.cellId)) nd.removedCells.push(cell.cellId);
+    nd.archivedCells = nd.archivedCells || {};
+    nd.archivedCells[cell.cellId] = {
+      events: cell.events || [],
+      storageTemp: cell.storageTemp || null,
+      rptType: cell.rptType || null,
+      soc: cell.soc != null ? cell.soc : null,
+      archivedOn: today(),
+    };
+    nd.rptCells.splice(idx, 1);
+    await persist(nd);
+  };
 
   // Restore an archived cell back to the planner.
   const handleUnarchive = React.useCallback(async (cellId) => {
@@ -1083,6 +1227,18 @@ function App() {
     const nd = JSON.parse(JSON.stringify(data));
     const chamberName = nd.chambers[chamberIdx].name;
     const isAuto = isAutoSyncChamber(chamberName);
+    // Notes are keyed by cellId in a shared map so they follow the cell across
+    // channels and survive watcher overwrites.
+    if ("notes" in updates) {
+      const cid = nd.chambers[chamberIdx].channels[channelIdx].cellId;
+      if (cid) {
+        nd.cellNotes = nd.cellNotes || {};
+        const txt = (updates.notes || "").trim();
+        if (txt) nd.cellNotes[cid] = txt;
+        else delete nd.cellNotes[cid];
+      }
+      delete updates.notes;
+    }
     if (isAuto) {
       // On auto-sync chambers, only persist user-metadata fields.
       // cellId / currentTest / startDate are owned by the watcher.
@@ -1304,15 +1460,22 @@ function App() {
       {/* ─── Tab Content ─── */}
       <div style={{ padding: "0 24px 24px" }}>
         {tab === "schedule" && (
-          <ScheduleTab data={data} stats={stats} expandedChambers={expandedChambers} setExpandedChambers={setExpandedChambers} toggleChamber={toggleChamber} onEditChannel={(ci, chi) => setEditModal({ chamberIdx: ci, channelIdx: chi })} onQuickClear={handleQuickClear} scopeFilter={scopeFilter} persist={persist} projectFilter={projectFilter} groupFilter={groupFilter} occupiedFilter={occupiedFilter} availableProjects={availableProjects} groupsByProject={groupsByProject} viewMode={viewMode} setViewMode={setViewMode} />
+          <ScheduleTab data={data} stats={stats} expandedChambers={expandedChambers} setExpandedChambers={setExpandedChambers} toggleChamber={toggleChamber} onEditChannel={(ci, chi) => setEditModal({ chamberIdx: ci, channelIdx: chi })} onQuickClear={handleQuickClear} scopeFilter={scopeFilter} persist={persist} projectFilter={projectFilter} groupFilter={groupFilter} occupiedFilter={occupiedFilter} availableProjects={availableProjects} groupsByProject={groupsByProject} viewMode={viewMode} setViewMode={setViewMode} onOpenCell={setOpenCellId} />
         )}
         {tab === "rpt" && (
-          <RptTab data={data} stats={stats} onAdd={() => setRptModal(true)} onDelete={handleDeleteRpt} onLogEvent={handleLogRptEvent} persist={persist} tempFilter={tempFilter} />
+          <RptTab data={data} stats={stats} onAdd={() => setRptModal(true)} onDelete={handleDeleteRpt} onLogEvent={handleLogRptEvent} persist={persist} tempFilter={tempFilter} onOpenCell={setOpenCellId} />
         )}
         {tab === "archive" && (
-          <ArchiveTab data={data} onUnarchive={handleUnarchive} />
+          <ArchiveTab data={data} onUnarchive={handleUnarchive} onOpenCell={setOpenCellId} />
         )}
       </div>
+
+      {/* ─── Unified Cell Drawer (opens from any view, keyed by cellId) ─── */}
+      {openCellId && (
+        <CellDrawer data={data} cellId={openCellId} persist={persist}
+          onClose={() => setOpenCellId(null)}
+          onArchive={handleArchiveCell} onUnarchive={handleUnarchive} />
+      )}
 
       {/* ─── Edit Channel Modal ─── */}
       {editModal && (
@@ -1335,7 +1498,7 @@ function App() {
 // ═══════════════════════════════════════════════════
 // SCHEDULE TAB
 // ═══════════════════════════════════════════════════
-function ScheduleTab({ data, stats, expandedChambers, setExpandedChambers, toggleChamber, onEditChannel, onQuickClear, scopeFilter, persist, projectFilter, groupFilter, occupiedFilter, availableProjects, groupsByProject, viewMode, setViewMode }) {
+function ScheduleTab({ data, stats, expandedChambers, setExpandedChambers, toggleChamber, onEditChannel, onQuickClear, scopeFilter, persist, projectFilter, groupFilter, occupiedFilter, availableProjects, groupsByProject, viewMode, setViewMode, onOpenCell }) {
   const [search, setSearch] = React.useState("");
   const q = search.toLowerCase().trim();
 
@@ -1695,14 +1858,14 @@ function ScheduleTab({ data, stats, expandedChambers, setExpandedChambers, toggl
                                   <div style={{ width: (shelfTotal ? shelfOcc / shelfTotal * 100 : 0) + "%", height: "100%", background: shelfOcc > 0 ? CATEGORY_COLORS[getChamberCategory(chamber)] : "transparent", borderRadius: 2 }} />
                                 </div>
                               </div>
-                              <div style={{ display: "grid", gridTemplateColumns: "40px 120px 1fr 100px 80px 100px 60px", gap: 0, padding: "3px 8px 2px", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", color: "#64748b" }}>
-                                <span>Ch</span><span>Channel ID</span><span>Cell ID / Project · Group</span><span>Test</span><span>Dur.</span><span>Start</span><span></span>
+                              <div style={{ display: "grid", gridTemplateColumns: "40px 120px 1fr 300px 100px 60px", gap: 0, padding: "3px 8px 2px", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", color: "#64748b" }}>
+                                <span>Ch</span><span>Channel ID</span><span>Cell ID / Project · Group</span><span>Test</span><span>Start</span><span></span>
                               </div>
                               {visibleShelfChannels.map((ch) => {
                                 const chi = chamber.channels.indexOf(ch);
                                 return (
                                   <div key={chi} style={{
-                                    display: "grid", gridTemplateColumns: "40px 120px 1fr 100px 80px 100px 60px",
+                                    display: "grid", gridTemplateColumns: "40px 120px 1fr 300px 100px 60px",
                                     gap: 0, padding: "6px 8px", fontSize: 12, alignItems: "center",
                                     borderBottom: "1px solid #1a1f27",
                                     background: ch.cellId ? "rgba(78,154,245,0.04)" : "transparent"
@@ -1712,7 +1875,16 @@ function ScheduleTab({ data, stats, expandedChambers, setExpandedChambers, toggl
                                     <div>
                                       {ch.cellId ? (
                                         <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                                          <span style={{ color: "#e2e6ed", fontWeight: 500 }}>{ch.cellId}</span>
+                                          <span style={{ color: "#e2e6ed", fontWeight: 500, display: "flex", alignItems: "center", gap: 5 }}>
+                                            <span
+                                              onClick={(e) => { e.stopPropagation(); onOpenCell && onOpenCell(ch.cellId); }}
+                                              title="View cell details"
+                                              style={{ cursor: "pointer", borderBottom: "1px dotted #3a4250" }}
+                                            >{ch.cellId}</span>
+                                            {data.cellNotes && data.cellNotes[ch.cellId] && (
+                                              <span className="fn-tip" data-full={data.cellNotes[ch.cellId]} style={{ fontSize: 10, cursor: "default" }}>📝</span>
+                                            )}
+                                          </span>
                                           <InlineProjectGroupEdit
                                             project={ch.project}
                                             group={ch.analysisGroup}
@@ -1731,10 +1903,9 @@ function ScheduleTab({ data, stats, expandedChambers, setExpandedChambers, toggl
                                       )}
                                     </div>
                                     <div style={{ minWidth: 0 }}>
-                                      <span style={{ color: ch.currentTest ? "#e2e6ed" : "#3a4250", fontSize: 11 }}>{ch.currentTest || "—"}</span>
-                                      {ch.filename && <div title={ch.filename} style={{ fontSize: 9, color: "#4a5260", fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ch.filename}</div>}
+                                      <span style={{ color: (ch.filename || ch.currentTest) ? "#e2e6ed" : "#3a4250", fontSize: 11 }}>{ch.filename ? testTypeLabel(ch.filename) : (ch.currentTest || "—")}</span>
+                                      {ch.filename && <div className="fn-tip" data-full={ch.filename} style={{ minWidth: 0 }}><div style={{ fontSize: 9, color: "#4a5260", fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{shortFileName(ch.filename)}</div></div>}
                                     </div>
-                                    <span style={{ color: "#8891a0", fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>{ch.durationWeeks ? ch.durationWeeks + "w" : "—"}</span>
                                     <span style={{ color: "#8891a0", fontSize: 11 }}>{fmtDateFull(ch.startDate)}</span>
                                     <div style={{ display: "flex", gap: 4 }}>
                                       {ch.cellId && !isAutoSyncChamber(chamber.name) && <button onClick={(e) => { e.stopPropagation(); if (confirm("Clear " + ch.cellId + " from channel " + ch.number + "?")) onQuickClear(ci, chi); }} style={{
@@ -1779,6 +1950,7 @@ function ChannelModal({ data, chamberIdx, channelIdx, onSave, onClose }) {
   const [test, setTest] = React.useState(ch.currentTest || "");
   const [format, setFormat] = React.useState(ch.cellFormat || "SLP");
   const [startDate, setStartDate] = React.useState(ch.startDate || today());
+  const [notes, setNotes] = React.useState((data.cellNotes && ch.cellId && data.cellNotes[ch.cellId]) || "");
 
   const selectedTest = data.testLibrary.find(t => t.name === test);
   const dur = selectedTest?.durationWeeks || null;
@@ -1861,14 +2033,25 @@ function ChannelModal({ data, chamberIdx, channelIdx, onSave, onClose }) {
       </Field>
       {dur && !_autoSync && <div style={{ fontSize: 12, color: "#8891a0", marginBottom: 12 }}>End date: {fmtDateFull(addDays(startDate, dur * 7))}</div>}
 
+      <Field label="Notes">
+        <textarea
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          placeholder={cellId ? "Anything worth remembering about this cell…" : "(needs a Cell ID first)"}
+          disabled={!cellId}
+          rows={3}
+          style={{ ...inputStyle, resize: "vertical", minHeight: 56, fontFamily: "inherit", opacity: cellId ? 1 : 0.55, cursor: cellId ? "text" : "not-allowed" }}
+        />
+      </Field>
+
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
         <button onClick={() => {
           // Group requires project; if project is cleared, drop group too.
           const projVal = project.trim() || null;
           const groupVal = projVal ? (group.trim() || null) : null;
           onSave(chamberIdx, channelIdx, _autoSync
-            ? { project: projVal, analysisGroup: groupVal, cellFormat: format || null }
-            : { cellId: cellId || null, project: projVal, analysisGroup: groupVal, cellFormat: format || null, currentTest: test || null, durationWeeks: dur, startDate: startDate || null });
+            ? { project: projVal, analysisGroup: groupVal, cellFormat: format || null, notes }
+            : { cellId: cellId || null, project: projVal, analysisGroup: groupVal, cellFormat: format || null, currentTest: test || null, durationWeeks: dur, startDate: startDate || null, notes });
         }} style={btnPrimary}>Save</button>
         {!_autoSync && <button onClick={() => onSave(chamberIdx, channelIdx, { cellId: null, currentTest: "CLEAR" })} style={btnDanger}>Clear Channel</button>}
         <button onClick={onClose} style={btnSecondary}>Cancel</button>
@@ -1880,7 +2063,7 @@ function ChannelModal({ data, chamberIdx, channelIdx, onSave, onClose }) {
 // ═══════════════════════════════════════════════════
 // ARCHIVE TAB — lightweight ledger of every cell ever run
 // ═══════════════════════════════════════════════════
-function ArchiveTab({ data, onUnarchive }) {
+function ArchiveTab({ data, onUnarchive, onOpenCell }) {
   const [search, setSearch] = React.useState("");
   const [expanded, setExpanded] = React.useState(() => new Set());
   const folderArch = data.archive || {};        // folder sweep — all cells, finished tests
@@ -1935,7 +2118,10 @@ function ArchiveTab({ data, onUnarchive }) {
             <div key={e.id} style={{ borderTop: i ? "1px solid #1a1f27" : "none", background: i % 2 ? "rgba(255,255,255,0.01)" : "transparent" }}>
               <div onClick={() => expandable && toggle(e.id)}
                 style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 14px", cursor: expandable ? "pointer" : "default" }}>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 600, color: "#e2e6ed", minWidth: 150 }}>{e.id}</span>
+                <span
+                  onClick={(ev) => { ev.stopPropagation(); onOpenCell && onOpenCell(e.id); }}
+                  title="View cell details"
+                  style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 600, color: "#e2e6ed", minWidth: 150, cursor: "pointer", borderBottom: "1px dotted #3a4250" }}>{e.id}</span>
                 {isCL && <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 3, background: "rgba(167,139,250,0.15)", color: "#a78bfa", fontWeight: 600 }}>Calendar Life</span>}
                 <div style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "flex-end" }}>
                   {isCL
@@ -1976,7 +2162,7 @@ function ArchiveTab({ data, onUnarchive }) {
 // ═══════════════════════════════════════════════════
 // RPT TAB
 // ═══════════════════════════════════════════════════
-function RptTab({ data, stats, onAdd, onDelete, onLogEvent, persist, tempFilter }) {
+function RptTab({ data, stats, onAdd, onDelete, onLogEvent, persist, tempFilter, onOpenCell }) {
   const [rptSubTab, setRptSubTab] = React.useState("storage"); // "storage" | "cycling" | "gantt"
   const [upcomingExpanded, setUpcomingExpanded] = React.useState(false);
   const [selectedIdx, setSelectedIdx] = React.useState(null); // index into data.rptCells for the detail drawer
@@ -2019,8 +2205,6 @@ function RptTab({ data, stats, onAdd, onDelete, onLogEvent, persist, tempFilter 
     persist(nd);
   }, [data, persist]);
 
-  const selected = selectedIdx != null ? (data.rptCells || [])[selectedIdx] : null;
-
   // Confirm a cell came back to storage on `dateStr` — closes its open RPT
   // event; the server then schedules the next RPT (return + rest days).
   const handleReturn = async (rptIdx, dateStr) => {
@@ -2030,7 +2214,22 @@ function RptTab({ data, stats, onAdd, onDelete, onLogEvent, persist, tempFilter 
     const last = evs[evs.length - 1];
     if (last && !last.returned) last.returned = dateStr;
     cell.running = false;
+    cell.inTestArea = false;
     cell.nextRptStart = addDays(dateStr, (nd.rptSettings?.restDays) || 28);
+    await persist(nd);
+  };
+
+  const handleReturnAll = async (dateStr) => {
+    const nd = JSON.parse(JSON.stringify(data));
+    nd.rptCells.forEach(cell => {
+      if (!isAwaitingReturn(cell)) return;
+      const evs = cell.events || (cell.events = []);
+      const last = evs[evs.length - 1];
+      if (last && !last.returned) last.returned = dateStr;
+      cell.running = false;
+      cell.inTestArea = false;
+      cell.nextRptStart = addDays(dateStr, (nd.rptSettings?.restDays) || 28);
+    });
     await persist(nd);
   };
 
@@ -2079,15 +2278,10 @@ function RptTab({ data, stats, onAdd, onDelete, onLogEvent, persist, tempFilter 
       {rptSubTab === "storage" && (
         <StorageView data={data} persist={persist} tempFilter={tempFilter}
           selectedIdx={selectedIdx} setSelectedIdx={setSelectedIdx} onAdd={onAdd}
-          onReturn={handleReturn} onRemove={handleRemove} />
+          onReturn={handleReturn} onReturnAll={handleReturnAll} onRemove={handleRemove} onOpenCell={onOpenCell} />
       )}
       {rptSubTab === "gantt" && (
-        <ChannelUsageGantt data={data} persist={persist} tempFilter={tempFilter} />
-      )}
-
-      {selected && (
-        <CellDetailDrawer data={data} rptIdx={selectedIdx}
-          onClose={() => setSelectedIdx(null)} onRemove={handleRemove} />
+        <ChannelUsageGantt data={data} persist={persist} tempFilter={tempFilter} onOpenCell={onOpenCell} />
       )}
     </div>
   );
@@ -2096,10 +2290,11 @@ function RptTab({ data, stats, onAdd, onDelete, onLogEvent, persist, tempFilter 
 // ═══════════════════════════════════════════════════
 // CHANNEL USAGE GANTT
 // ═══════════════════════════════════════════════════
-function ChannelUsageGantt({ data, persist, tempFilter }) {
+function ChannelUsageGantt({ data, persist, tempFilter, onOpenCell }) {
   const [selectedBlocks, setSelectedBlocks] = React.useState(new Set()); // set of "cellId|start|rptNumber"
   const [dragState, setDragState] = React.useState(null);
   const [pendingMove, setPendingMove] = React.useState(null);
+  const [resizeState, setResizeState] = React.useState(null);   // live return-date edge drag
   const scrollRef = React.useCallback(node => { if (node && !node._scrolled) { node._scrolled = true; node.scrollLeft = PAST_DAYS * COL_W; } }, []);
   const detailRef = React.useCallback(node => { if (node) node.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, [selectedBlocks]);
 
@@ -2162,6 +2357,7 @@ function ChannelUsageGantt({ data, persist, tempFilter }) {
     });
 
     const channelBlocks = {};
+    const channelLanes = {};   // vertical lanes per channel so overlapping bars stack instead of hiding
     const overlaps = [];
     const gaps = [];
 
@@ -2175,83 +2371,64 @@ function ChannelUsageGantt({ data, persist, tempFilter }) {
         const tempLabel = rc.storageTemp || "—";
 
         const events = (rc.events || []).filter(ev => ev.start);
+        // Each real run renders as a fixed `rptDur`-day test BOX, with a whisker
+        // out to the return-to-storage date. boxEnd = the immutable test window;
+        // returnEnd = when the cell physically went back (null while on test).
+        // Channel occupancy keys off the return (or boxEnd if not back yet).
         events.forEach((ev, evIdx) => {
           const rptNumber = evIdx + 1;
-          let evStart = ev.start;
-          let evEnd = ev.returned || addDays(ev.start, rptDur);
+          const evStart = ev.start;
+          const boxEnd = addDays(evStart, rptDur);
+          const returnEnd = ev.returned || null;
+          const occEnd = returnEnd || boxEnd;       // span the channel is busy
+          const onTest = !returnEnd && evStart <= todayStr;  // active / awaiting return
 
-          const isPast = evStart < todayStr;
-          const isCurrent = evStart <= todayStr && evEnd > todayStr;
+          if (occEnd < viewStart || evStart >= viewEnd) return;
 
-          if (evEnd < viewStart || evStart >= viewEnd) return;
-
-          const type = isPast ? "completed" : "planned";
           blocks.push({
-            cellId: rc.cellId, start: evStart, end: evEnd, testEnd: evEnd,
-            type, projected: false,
+            cellId: rc.cellId, start: evStart, startTs: ev.startTs, end: occEnd, boxEnd, returnEnd, testEnd: boxEnd,
+            type: "completed", projected: false,   // real runs are facts → never whole-drag
             rptNumber, soc: rc.soc, storageTemp: rc.storageTemp,
             assignedStorage: rc.assignedStorage,
-            onTest: isCurrent, _rptIdx: rc._idx,
+            onTest, _rptIdx: rc._idx,
             monthLabel: (rptNumber - 1) + "M", socLabel, tempLabel,
             channel: key,
           });
         });
 
-        // Project forward from the last real run (revised off its return date)
-        // and keep the same cadence going to fill the view window.
+        // Project the future, per cell, at a 4-on / rest-off cadence. Base = the
+        // cell's most recent physical return (or an on-test estimate, or
+        // nextRptStart if no runs yet). Manual anchors win: rptPins[R] pins that
+        // RPT and the tail re-cadences from it; the first future RPT also honors
+        // nextRptStart/nextRptOverride. Future boxes carry no dwell.
         const sortedEvts = [...events].sort((a, b) => a.start.localeCompare(b.start));
         const lastEvt = sortedEvts[sortedEvts.length - 1];
-        if (lastEvt) {
-          const lastEnd = lastEvt.returned || addDays(lastEvt.start, rptDur);
-          let projStart = addDays(lastEnd, restDays);
-          let projNum = sortedEvts.length + 1;
-          let projCount = 0;
-          while (projStart < viewEnd && projCount < MAX_PROJECTIONS) {
-            const projEnd = addDays(projStart, rptDur);
-            if (projEnd >= viewStart) {
-              blocks.push({
-                cellId: rc.cellId, start: projStart, end: projEnd, testEnd: projEnd,
-                type: "planned", projected: true,
-                rptNumber: projNum, soc: rc.soc, storageTemp: rc.storageTemp,
-                assignedStorage: rc.assignedStorage,
-                _rptIdx: rc._idx,
-                monthLabel: (projNum - 1) + "M", socLabel, tempLabel, channel: key,
-              });
-            }
-            projStart = addDays(projEnd, restDays);
-            projNum++;
-            projCount++;
-          }
-        } else if (rc.nextRptStart) {
-          const es = rc.nextRptStart;
-          const ee = addDays(es, rptDur);
-          if (ee >= viewStart && es < viewEnd) {
+        const pins = rc.rptPins || {};
+        const firstFuture = sortedEvts.length + 1;
+        let prevReturn = lastEvt ? (lastEvt.returned || addDays(lastEvt.start, rptDur)) : null;
+        let projNum = firstFuture;
+        let projCount = 0;
+        while (projCount < MAX_PROJECTIONS) {
+          let start;
+          if (pins[projNum]) start = pins[projNum];
+          else if (projNum === firstFuture) start = rc.nextRptStart || (prevReturn ? addDays(prevReturn, restDays) : null);
+          else start = prevReturn ? addDays(prevReturn, restDays) : null;
+          if (!start) break;
+          const projEnd = addDays(start, rptDur);
+          prevReturn = projEnd;   // no dwell on projections → next cadences rest days after the box
+          if (start >= viewEnd) break;
+          if (projEnd >= viewStart) {
             blocks.push({
-              cellId: rc.cellId, start: es, end: ee, testEnd: ee,
-              type: "planned", projected: false,
-              rptNumber: 1, soc: rc.soc, storageTemp: rc.storageTemp,
-              assignedStorage: rc.assignedStorage,
-              _rptIdx: rc._idx,
-              monthLabel: "0M", socLabel, tempLabel, channel: key,
+              cellId: rc.cellId, start, end: projEnd, boxEnd: projEnd, returnEnd: null, testEnd: projEnd,
+              type: "planned", projected: true,
+              rptNumber: projNum, soc: rc.soc, storageTemp: rc.storageTemp,
+              assignedStorage: rc.assignedStorage, _rptIdx: rc._idx,
+              isFirstFuture: projNum === firstFuture,
+              monthLabel: (projNum - 1) + "M", socLabel, tempLabel, channel: key,
             });
-            let projStart = addDays(ee, restDays);
-            let projNum = 2;
-            let projCount = 0;
-            while (projStart < viewEnd && projCount < MAX_PROJECTIONS) {
-              const pEnd = addDays(projStart, rptDur);
-              blocks.push({
-                cellId: rc.cellId, start: projStart, end: pEnd, testEnd: pEnd,
-                type: "planned", projected: true,
-                rptNumber: projNum, soc: rc.soc, storageTemp: rc.storageTemp,
-                assignedStorage: rc.assignedStorage,
-                _rptIdx: rc._idx,
-                monthLabel: (projNum - 1) + "M", socLabel, tempLabel, channel: key,
-              });
-              projStart = addDays(pEnd, restDays);
-              projNum++;
-              projCount++;
-            }
           }
+          projNum++;
+          projCount++;
         }
       });
 
@@ -2274,6 +2451,18 @@ function ChannelUsageGantt({ data, persist, tempFilter }) {
         }
       }
 
+      // Assign each bar a vertical lane so overlapping cells stack as separate
+      // cards rather than hiding behind each other (greedy by start; a bar takes
+      // the lowest lane whose previous bar has already ended).
+      const laneEnds = [];
+      blocks.forEach(b => {
+        let lane = laneEnds.findIndex(end => end <= b.start);
+        if (lane === -1) { lane = laneEnds.length; laneEnds.push(b.end); }
+        else laneEnds[lane] = b.end;
+        b.lane = lane;
+      });
+      channelLanes[key] = Math.max(1, laneEnds.length);
+
       const busyDays = new Set();
       blocks.forEach(b => { let d = b.start; while (d < b.end) { busyDays.add(d); d = addDays(d, 1); } });
       let gapStart = null, gapWeekdays = 0;
@@ -2289,13 +2478,69 @@ function ChannelUsageGantt({ data, persist, tempFilter }) {
       channelBlocks[key] = blocks;
     });
 
-    return { dates, channels, channelBlocks, overlaps, gaps, viewStart, rptDur, restDays, todayStr };
+    return { dates, channels, channelBlocks, channelLanes, overlaps, gaps, viewStart, rptDur, restDays, todayStr };
   }, [data, tempFilter]);
 
-  const { dates, channels, channelBlocks, overlaps, gaps, viewStart, rptDur, restDays, todayStr } = ganttData;
+  const { dates, channels, channelBlocks, channelLanes, overlaps, gaps, viewStart, rptDur, restDays, todayStr } = ganttData;
 
   // ── Selection + Drag state ──
   const dragRef = React.useRef(null); // {block, startX, startY, moved, currentOffset}
+  const resizeRef = React.useRef(null); // {block, startX, base, moved, currentOffset}
+
+  // Drag the right edge of a past/current bar to set its return-to-storage date.
+  const handleResizeDown = React.useCallback((e, block) => {
+    const startX = e.clientX || (e.touches && e.touches[0].clientX);
+    const base = block.returnEnd || (block.onTest ? today() : block.boxEnd);
+    const minDays = daysBetween(base, block.boxEnd); // return can't precede the 4-day test box
+    resizeRef.current = { block, startX, base, moved: false, currentOffset: 0 };
+    setResizeState({ block, currentOffset: 0 });
+
+    const handleMove = (ev) => {
+      ev.preventDefault();
+      const cx = ev.clientX || (ev.touches && ev.touches[0].clientX);
+      let days = Math.round((cx - startX) / COL_W);
+      if (days < minDays) days = minDays;
+      if (!resizeRef.current.moved && Math.abs(cx - startX) > 3) resizeRef.current.moved = true;
+      resizeRef.current.currentOffset = days;
+      setResizeState(prev => prev ? { ...prev, currentOffset: days } : null);
+    };
+    const handleUp = () => {
+      document.removeEventListener("mousemove", handleMove);
+      document.removeEventListener("mouseup", handleUp);
+      document.removeEventListener("touchmove", handleMove);
+      document.removeEventListener("touchend", handleUp);
+      const r = resizeRef.current;
+      if (r && r.moved && r.currentOffset !== 0 && applyReturnRef.current) {
+        applyReturnRef.current(r.block, addDays(r.base, r.currentOffset));
+      }
+      setResizeState(null);
+      setTimeout(() => { resizeRef.current = null; }, 0);
+    };
+    document.addEventListener("mousemove", handleMove);
+    document.addEventListener("mouseup", handleUp);
+    document.addEventListener("touchmove", handleMove, { passive: false });
+    document.addEventListener("touchend", handleUp);
+  }, []);
+
+  // Apply a return-date edge-drag immediately on drop (no confirm). Held in a
+  // ref reassigned every render so the drag's handleUp closure sees fresh data.
+  const applyReturnRef = React.useRef(null);
+  applyReturnRef.current = async (block, newReturn) => {
+    if (!persist) return;
+    const nd = JSON.parse(JSON.stringify(data));
+    const cell = nd.rptCells[block._rptIdx];
+    const idx = block.rptNumber - 1;
+    const ev = cell && cell.events && cell.events[idx];
+    if (!ev) return;
+    ev.returned = newReturn;
+    // Only the cell's most recent run drives its schedule; editing it reflows the
+    // future off the real physical return (manual pins still supersede).
+    if (idx === cell.events.length - 1) {
+      cell.nextRptStart = addDays(newReturn, nd.rptSettings?.restDays || 28);
+      cell.nextRptOverride = null;
+    }
+    await persist(nd);
+  };
 
   const handleBlockClick = React.useCallback((e, b) => {
     // Only handle click if we didn't drag
@@ -2391,37 +2636,20 @@ function ChannelUsageGantt({ data, persist, tempFilter }) {
     const { blocks: moveBlocks, daysDelta } = pendingMoveInfo;
     const nd = JSON.parse(JSON.stringify(data));
 
+    // Only projected (future) boxes are whole-draggable. Sliding one PINS it:
+    // the first future RPT pins via nextRptStart/nextRptOverride; later RPTs pin
+    // via rptPins[rptNumber]. The projection re-cadences the tail at 4+28 from
+    // each pin, so subsequent boxes follow automatically.
     moveBlocks.forEach(block => {
       const cell = nd.rptCells[block._rptIdx];
-      if (!cell) return;
-
-      if (block.projected) {
-        if (cell.nextRptStart) {
-          cell.nextRptStart = addDays(cell.nextRptStart, daysDelta);
-        }
+      if (!cell || !block.projected) return;
+      const newStart = addDays(block.start, daysDelta);
+      if (block.isFirstFuture) {
+        cell.nextRptStart = newStart;
+        cell.nextRptOverride = newStart;  // pin so the watcher keeps it
       } else {
-        const events = cell.events || [];
-        const matchIdx = events.findIndex(ev =>
-          ev.start === block.start ||
-          (block.originalStart && ev.start === block.originalStart)
-        );
-        if (matchIdx >= 0) {
-          const ev = events[matchIdx];
-          const newStart = addDays(ev.start, daysDelta);
-          ev.start = newStart;
-          if (ev.returned) {
-            ev.returned = addDays(ev.returned, daysDelta);
-          }
-        } else if (cell.nextRptStart) {
-          cell.nextRptStart = addDays(cell.nextRptStart, daysDelta);
-        }
-        // Recompute nextRptStart from last completed event
-        const completedEvts = (cell.events || []).filter(e => e.returned);
-        const onTestEvt = (cell.events || []).find(e => !e.returned);
-        if (completedEvts.length > 0 && !onTestEvt) {
-          const lastReturn = completedEvts.sort((a,b) => b.returned.localeCompare(a.returned))[0].returned;
-          cell.nextRptStart = addDays(lastReturn, nd.rptSettings.restDays);
-        }
+        cell.rptPins = cell.rptPins || {};
+        cell.rptPins[block.rptNumber] = newStart;
       }
     });
 
@@ -2562,7 +2790,7 @@ function ChannelUsageGantt({ data, persist, tempFilter }) {
                 {dates.map((d, di) => {
                   const showMonth = di === 0 || dates[di-1]?.label.split(" ")[0] !== d.label.split(" ")[0];
                   return (
-                    <div key={di} style={{ width: COL_W, minWidth: COL_W, textAlign: "center", borderLeft: d.dow === 1 ? "1px solid #2a303c" : "none", background: d.isToday ? "rgba(78,154,245,0.15)" : d.isWeekend ? "#1a1e27" : "transparent", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "2px 0 3px" }}>
+                    <div key={di} style={{ width: COL_W, minWidth: COL_W, boxSizing: "border-box", textAlign: "center", borderLeft: d.dow === 1 ? "1px solid #2a303c" : "none", background: d.isToday ? "rgba(78,154,245,0.15)" : d.isWeekend ? "#1a1e27" : "transparent", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "2px 0 3px" }}>
                       {showMonth && <div style={{ fontSize: 9, fontWeight: 700, color: "#4e9af5", lineHeight: "12px" }}>{d.label.split(" ")[0]}</div>}
                       <div style={{ fontSize: 10, fontWeight: 600, color: d.isToday ? "#4e9af5" : d.isWeekend ? "#3a4250" : "#8891a0", lineHeight: "14px" }}>{d.label.split(" ")[1]}</div>
                       <div style={{ fontSize: 8, color: d.isToday ? "#4e9af5" : d.isWeekend ? "#2a303c" : "#64748b", lineHeight: "10px" }}>{d.isToday ? "TODAY" : d.dayLabel}</div>
@@ -2577,8 +2805,10 @@ function ChannelUsageGantt({ data, persist, tempFilter }) {
               const key = ch.label;
               const blocks = channelBlocks[key] || [];
               const isEmpty = blocks.length === 0;
+              const laneCount = channelLanes[key] || 1;   // stack overlapping bars; row grows to fit
+              const rowH = ROW_H * laneCount;
               return (
-                <div key={ri} style={{ display: "flex", borderBottom: "1px solid #1a1f27", height: ROW_H, background: ri % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)" }}>
+                <div key={ri} style={{ display: "flex", borderBottom: "1px solid #1a1f27", height: rowH, background: ri % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)" }}>
                   <div style={{ width: LABEL_W, minWidth: LABEL_W, flexShrink: 0, padding: "0 8px", display: "flex", alignItems: "center", gap: 6, borderRight: "1px solid #2a303c", fontSize: 11, color: isEmpty ? "#3a4250" : "#e2e6ed", fontFamily: "'JetBrains Mono', monospace" }}>
                     <span style={{ fontWeight: 600 }}>{ch.number != null ? String(ch.number).padStart(2, "0") : ch.label}</span>
                     {ch.number != null && <span style={{ fontSize: 9, color: ch.purpose === "RPT-only" ? "#a78bfa" : "#4e9af5", fontWeight: 600 }}>{ch.purpose === "RPT-only" ? "RPT" : "FLX"}</span>}
@@ -2586,7 +2816,7 @@ function ChannelUsageGantt({ data, persist, tempFilter }) {
                   </div>
                   <div style={{ position: "relative", display: "flex", flex: 1 }}>
                     {dates.map((d, di) => (
-                      <div key={di} style={{ width: COL_W, minWidth: COL_W, height: "100%", background: d.isToday ? "rgba(78,154,245,0.06)" : d.isWeekend ? "#1a1e27" : "transparent", borderLeft: d.dow === 1 ? "1px solid #1e2530" : "none" }} />
+                      <div key={di} style={{ width: COL_W, minWidth: COL_W, boxSizing: "border-box", height: "100%", background: d.isToday ? "rgba(78,154,245,0.06)" : d.isWeekend ? "#1a1e27" : "transparent", borderLeft: d.dow === 1 ? "1px solid #1e2530" : "none" }} />
                     ))}
                     {/* Today line */}
                     {(() => {
@@ -2601,62 +2831,111 @@ function ChannelUsageGantt({ data, persist, tempFilter }) {
                       const isDraggingSingle = dragState && dragState.block.cellId === b.cellId && dragState.block.start === b.start;
                       const applyDragOffset = isDragSelected || isDraggingSingle;
                       const dragOffset = applyDragOffset ? dragState.currentOffset * COL_W : 0;
-                      const bStart = daysBetween(viewStart, b.start);
-                      const bEnd = daysBetween(viewStart, b.end);
-                      if (bEnd < 0 || bStart >= TOTAL_DAYS) return null;
-                      const left = Math.max(0, bStart) * COL_W + dragOffset;
-                      const right = Math.min(TOTAL_DAYS, bEnd) * COL_W + dragOffset;
+
+                      // BOX = the fixed test window (start → boxEnd); whole-drag (projected only) shifts it.
+                      // Events on a day start at the MIDDLE of that day's column (HALF offset),
+                      // matching the centered today-line so nothing reads a half-day early.
+                      const HALF = COL_W / 2;
+                      const boxStartI = daysBetween(viewStart, b.start);
+                      const boxEndI = daysBetween(viewStart, b.boxEnd);
+                      const left = Math.max(0, boxStartI) * COL_W + HALF + dragOffset;
+                      const right = Math.min(TOTAL_DAYS, boxEndI) * COL_W + HALF + dragOffset;
                       const width = right - left;
-                      if (width <= 0) return null;
+
+                      // WHISKER = dwell after the test until return-to-storage. For an
+                      // on-test bar with no return yet, it grows to today. Resize-dragging
+                      // its end sets the return date (handled below for past/current).
+                      const isResizing = resizeState && resizeState.block.cellId === b.cellId && resizeState.block.start === b.start;
+                      const resizeDays = isResizing ? resizeState.currentOffset : 0;
+                      const baseWhiskerEnd = b.returnEnd || (b.onTest ? todayStr : null);
+                      const whiskerEnd = baseWhiskerEnd ? addDays(baseWhiskerEnd, resizeDays) : null;
+                      const whiskerEndI = whiskerEnd ? daysBetween(viewStart, whiskerEnd) : null;
+                      const boxRightAbs = Math.min(TOTAL_DAYS, boxEndI) * COL_W + HALF;
+                      const whiskerRightAbs = whiskerEndI != null ? Math.min(TOTAL_DAYS, Math.max(boxEndI, whiskerEndI)) * COL_W + HALF : boxRightAbs;
+                      const hasWhisker = whiskerEnd && whiskerEnd > b.boxEnd;
+
+                      if ((boxEndI < 0 || boxStartI >= TOTAL_DAYS) && !hasWhisker) return null;
+                      if (width <= 0 && !hasWhisker) return null;
 
                       const color = blockColor(b.storageTemp, b.soc);
                       const borderColor = tempBaseColor(b.storageTemp);
                       const isCompleted = b.type === "completed";
-                      const canDrag = !isCompleted;
+                      const isPastDone = isCompleted && !b.onTest;   // historical, finished
+                      const canDrag = !isCompleted;                  // only projected boxes whole-drag
+                      const canResize = isCompleted && !!persist;    // past/current: edge-drag the return
 
                       const shortId = b.cellId.replace("CRD_","").replace("CID","");
                       const metaLine = `${b.monthLabel} · ${b.socLabel} · ${b.tempLabel}`;
 
-                      const alphaFull = isCompleted && !b.onTest ? 0.7 : 0.85;
+                      // Past = grayed (more gray, similar transparency); current = bright; planned = mid.
+                      const alphaFull = b.onTest ? 1.0 : isPastDone ? 0.72 : 0.85;
+
+                      const laneTop = (b.lane || 0) * ROW_H;   // vertical band when conflicts stack
+                      const midY = laneTop + ROW_H / 2;
 
                       return (
-                        <div
-                          key={bi}
-                          onClick={(e) => { e.stopPropagation(); handleBlockClick(e, b); }}
-                          onMouseDown={(e) => canDrag && handlePointerDown(e, b)}
-                          onTouchStart={(e) => canDrag && handlePointerDown(e, b)}
-                          style={{
-                            position: "absolute",
-                            left, top: 3, width, height: ROW_H - 6,
-                            borderRadius: 4,
-                            background: b.hasOverlap
-                              ? `repeating-linear-gradient(45deg, ${color}, ${color} 3px, rgba(248,113,113,0.3) 3px, rgba(248,113,113,0.3) 6px)`
-                              : color,
-                            opacity: applyDragOffset ? 0.85 * alphaFull : alphaFull,
-                            border: b.hasOverlap ? "2px solid #f87171"
-                              : isSelBlock ? "2px solid #fff"
-                              : `1px solid ${borderColor}66`,
-                            cursor: canDrag ? (dragState ? "grabbing" : "grab") : "pointer",
-                            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                            overflow: "hidden",
-                            zIndex: applyDragOffset ? 20 : isSelBlock ? 5 : b.hasOverlap ? 3 : 2,
-                            transition: dragState ? "none" : "box-shadow 0.1s",
-                            boxShadow: applyDragOffset ? "0 4px 16px rgba(0,0,0,0.5)" : isSelBlock ? `0 0 8px ${borderColor}` : "none",
-                            userSelect: "none",
-                          }}
-                          title={`${b.cellId} RPT #${b.rptNumber} (${b.monthLabel}) · ${b.socLabel} SOC · ${b.tempLabel}\n${fmtDate(b.start)}→${fmtDate(b.testEnd || b.end)}${b.hasOverlap ? " ⚠ OVERLAP" : ""}${canDrag ? "\nDrag to reschedule · Shift+click to multi-select" : ""}`}
-                        >
-                          {width > 45 && (
-                            <span style={{ fontSize: 8, fontWeight: 800, color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.6)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "0 2px", lineHeight: "11px" }}>
-                              {shortId}
-                            </span>
+                        <React.Fragment key={bi}>
+                          {/* dwell whisker */}
+                          {hasWhisker && (
+                            <>
+                              <div style={{ position: "absolute", left: boxRightAbs, top: midY - 1, width: Math.max(1, whiskerRightAbs - boxRightAbs), height: 2,
+                                background: borderColor, opacity: b.returnEnd ? 0.6 : 0.4, zIndex: 1, pointerEvents: "none",
+                                ...(b.returnEnd ? {} : { background: "transparent", borderTop: `2px dashed ${borderColor}` }) }} />
+                              <div style={{ position: "absolute", left: whiskerRightAbs - 1, top: midY - 5, width: 2, height: 10, background: borderColor, opacity: 0.7, zIndex: 1, pointerEvents: "none" }} />
+                            </>
                           )}
-                          {width > 70 && (
-                            <span style={{ fontSize: 7, fontWeight: 600, color: "rgba(255,255,255,0.85)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "0 2px", lineHeight: "9px" }}>
-                              {metaLine}
-                            </span>
+                          {/* test box */}
+                          <div
+                            onClick={(e) => { e.stopPropagation(); handleBlockClick(e, b); }}
+                            onMouseDown={(e) => canDrag && handlePointerDown(e, b)}
+                            onTouchStart={(e) => canDrag && handlePointerDown(e, b)}
+                            style={{
+                              position: "absolute",
+                              left, top: laneTop + 3, width: Math.max(0, width), height: ROW_H - 6,
+                              borderRadius: 4,
+                              background: b.hasOverlap
+                                ? `repeating-linear-gradient(45deg, ${color}, ${color} 3px, rgba(248,113,113,0.3) 3px, rgba(248,113,113,0.3) 6px)`
+                                : color,
+                              opacity: applyDragOffset ? 0.85 * alphaFull : alphaFull,
+                              filter: isPastDone ? "grayscale(0.65)"
+                                : (b.type === "planned" ? "saturate(0.4) brightness(1.5)" : "none"),
+                              border: b.hasOverlap ? "2px solid #f87171"
+                                : isSelBlock ? "2px solid #fff"
+                                : b.onTest ? `1.5px solid ${borderColor}`
+                                : `1px solid ${borderColor}66`,
+                              cursor: canDrag ? (dragState ? "grabbing" : "grab") : "pointer",
+                              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                              overflow: "hidden",
+                              zIndex: applyDragOffset ? 20 : isSelBlock ? 5 : b.hasOverlap ? 3 : b.onTest ? 4 : 2,
+                              transition: dragState || resizeState ? "none" : "box-shadow 0.1s",
+                              boxShadow: applyDragOffset ? "0 4px 16px rgba(0,0,0,0.5)" : isSelBlock ? `0 0 8px ${borderColor}` : b.onTest ? `0 0 7px ${borderColor}` : "none",
+                              userSelect: "none",
+                            }}
+                            title={`${b.cellId} RPT #${b.rptNumber} (${b.monthLabel}) · ${b.socLabel} SOC · ${b.tempLabel}\n${fmtDate(b.start)}→${fmtDate(b.boxEnd)}${b.returnEnd ? " · returned " + fmtDate(b.returnEnd) : b.onTest ? " · on test" : ""}${b.hasOverlap ? " ⚠ OVERLAP" : ""}${canDrag ? "\nDrag to reschedule" : canResize ? "\nDrag right edge to set return date" : ""}`}
+                          >
+                            {width > 28 && (
+                              <span style={{ fontSize: 8, fontWeight: 800, color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.6)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "0 2px", lineHeight: "11px" }}>
+                                {shortId}
+                              </span>
+                            )}
+                            {width > 70 && (
+                              <span style={{ fontSize: 7, fontWeight: 600, color: "rgba(255,255,255,0.85)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "0 2px", lineHeight: "9px" }}>
+                                {metaLine}
+                              </span>
+                            )}
+                          </div>
+                          {/* return-date resize handle (past/current only) */}
+                          {canResize && (
+                            <div
+                              onMouseDown={(e) => { e.stopPropagation(); handleResizeDown(e, b); }}
+                              onTouchStart={(e) => { e.stopPropagation(); handleResizeDown(e, b); }}
+                              title="Drag to set the return-to-storage date"
+                              style={{ position: "absolute", left: whiskerRightAbs - 5, top: midY - 8, width: 12, height: 16, cursor: "ew-resize", zIndex: 6,
+                                display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <div style={{ width: 4, height: 14, borderRadius: 2, background: borderColor, opacity: isResizing ? 1 : 0.8, boxShadow: isResizing ? `0 0 6px ${borderColor}` : "none" }} />
+                            </div>
                           )}
-                        </div>
+                        </React.Fragment>
                       );
                     })}
                   </div>
@@ -2681,13 +2960,18 @@ function ChannelUsageGantt({ data, persist, tempFilter }) {
               </div>
               <div style={{ fontSize: 12, color: "#8891a0", marginTop: 4 }}>RPT #{firstSelected.rptNumber} · Month {firstSelected.monthLabel}</div>
             </div>
-            <button onClick={() => setSelectedBlocks(new Set())} style={{ padding: "3px 10px", borderRadius: 4, border: "1px solid #2a303c", background: "transparent", color: "#8891a0", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>✕</button>
+            <div style={{ display: "flex", gap: 8 }}>
+              {onOpenCell && <button onClick={() => onOpenCell(firstSelected.cellId)} style={{ padding: "3px 10px", borderRadius: 4, border: "1px solid #4e9af5", background: "transparent", color: "#4e9af5", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>View full details →</button>}
+              <button onClick={() => setSelectedBlocks(new Set())} style={{ padding: "3px 10px", borderRadius: 4, border: "1px solid #2a303c", background: "transparent", color: "#8891a0", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>✕</button>
+            </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12, marginTop: 12 }}>
             {[
-              ["Start", fmtDateFull(firstSelected.start)],
+              ["Start", firstSelected.startTs ? fmtDateTime(firstSelected.startTs) : fmtDateFull(firstSelected.start)],
               ["End", fmtDateFull(firstSelected.end)],
               ["Duration", rptDur + " days"],
+              ...(firstSelected.onTest && firstSelected.startTs && hoursSince(firstSelected.startTs) != null
+                ? [["Hours on test", hoursSince(firstSelected.startTs).toFixed(1) + "h / " + (rptDur * 24) + "h"]] : []),
               ["SOC", firstSelected.socLabel],
               ["Temp", firstSelected.tempLabel],
               ["Storage", firstSelected.assignedStorage || "—"],
@@ -2913,7 +3197,7 @@ function UpcomingRptAlert({ stats, tempFilter, expanded, setExpanded }) {
 // A single cell rendered as a small square. Colored by storage temp. A cell
 // that's out of its slot (on test, or awaiting return) is drawn dashed with a
 // badge: ⚡ = currently cycling, ? = test finished, confirm its return date.
-function CellSquare({ cell, idx, selected, dim, ghost, draggable, solid, onSelect, onDragStartCell }) {
+function CellSquare({ cell, idx, selected, dim, ghost, draggable, solid, showBar, onSelect, onDragStartCell }) {
   const col = tempColor(cell.storageTemp);
   const testing = isTesting(cell);
   const awaiting = isAwaitingReturn(cell);
@@ -2944,16 +3228,47 @@ function CellSquare({ cell, idx, selected, dim, ghost, draggable, solid, onSelec
       }}>
       {shortCell(cell.cellId)}
       {badge && <span style={{ position: "absolute", top: 1, right: 2, fontSize: 11, fontWeight: 700, color: badgeColor, lineHeight: 1 }}>{badge}</span>}
-      <div style={{ position: "absolute", left: 3, right: 3, bottom: 2, height: 2, background: faded ? "#0c0f14" : "rgba(0,0,0,0.45)", borderRadius: 1 }}>
-        <div style={{ width: ((cell.soc || 0) * 100) + "%", height: "100%", background: faded ? col : "rgba(255,255,255,0.9)", borderRadius: 1 }} />
-      </div>
+      {/* Bar: RPT elapsed time (0→100% over 96h) when on test — hidden for storage cells */}
+      {showBar && testing && (() => {
+        const lastEv = lastEvent(cell);
+        const pct = lastEv && lastEv.start ? Math.min(1, daysSinceDate(lastEv.start) / 4) : 0;
+        return (
+          <div style={{ position: "absolute", left: 3, right: 3, bottom: 2, height: 2, background: "rgba(0,0,0,0.45)", borderRadius: 1 }}>
+            <div style={{ width: (pct * 100) + "%", height: "100%", background: "rgba(255,255,255,0.9)", borderRadius: 1 }} />
+          </div>
+        );
+      })()}
     </div>
   );
 }
 
 // One grid square: a drop target that holds an optional cell.
-function StorageSlot({ occupant, occupantIdx, chamber, shelf, slot, selectedIdx, dim, onSelect, onDropCell }) {
+function StorageSlot({ occupant, occupantIdx, ghost, ghostIdx, chamber, shelf, slot, selectedIdx, dim, onSelect, onConfirmReturn, onDropCell }) {
   const [over, setOver] = React.useState(false);
+  // A "ghost" is a cell whose home slot is here but is physically OUT on an RPT
+  // run — shown faint so the slot reads as reserved-but-empty until the user
+  // confirms its return to storage. Awaiting (test-done) ghosts get a one-tap ✓.
+  const renderGhost = () => {
+    const onT = isTesting(ghost);
+    const shortId = ghost.cellId.replace("CRD_", "").replace("CID", "");
+    return (
+      <div onClick={() => onSelect && onSelect(ghostIdx)}
+        draggable={ghostIdx != null}
+        onDragStart={(e) => { e.dataTransfer.setData("text/plain", String(ghostIdx)); e.dataTransfer.effectAllowed = "move"; }}
+        title={`${ghost.cellId} — out for testing (${onT ? "cycling now" : "test done, awaiting return"}).\nDrag to change which slot it returns to. ${onT ? "It fills this slot once you confirm its return." : "Click ✓ to confirm it's back (today)."}`}
+        style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", borderRadius: 5, border: "1.5px dashed " + (onT ? "#33415580" : "#fbbf2466"),
+          background: "repeating-linear-gradient(45deg, rgba(255,255,255,0.02), rgba(255,255,255,0.02) 4px, transparent 4px, transparent 8px)",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "grab", opacity: 0.55 }}>
+        <span style={{ fontSize: 9, color: "#5b6573", fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.1 }}>{shortId}</span>
+        <span style={{ fontSize: 7.5, color: onT ? "#4e9af5" : "#fbbf24", marginTop: 1 }}>{onT ? "⚡ on test" : "◌ return?"}</span>
+        {!onT && onConfirmReturn && (
+          <button onClick={(e) => { e.stopPropagation(); onConfirmReturn(ghostIdx, today()); }}
+            title="Returned to storage today — confirm and place back"
+            style={{ position: "absolute", top: -5, right: -5, width: 18, height: 18, borderRadius: "50%", border: "1.5px solid #34d399", background: "#0c0f14", color: "#34d399", fontSize: 10, fontWeight: 700, lineHeight: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3, padding: 0, fontFamily: "inherit", opacity: 1, boxShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>✓</button>
+        )}
+      </div>
+    );
+  };
   return (
     <div
       onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (!over) setOver(true); }}
@@ -2962,7 +3277,130 @@ function StorageSlot({ occupant, occupantIdx, chamber, shelf, slot, selectedIdx,
       style={{ borderRadius: 6, outline: over ? "2px solid #4e9af5" : "none", outlineOffset: -1 }}>
       {occupant
         ? <CellSquare cell={occupant} idx={occupantIdx} selected={selectedIdx === occupantIdx} dim={dim} draggable onSelect={onSelect} />
-        : <div style={{ width: "100%", aspectRatio: "1 / 1", borderRadius: 5, border: "1px dashed #1f2630" }} />}
+        : ghost
+          ? renderGhost()
+          : <div style={{ width: "100%", aspectRatio: "1 / 1", borderRadius: 5, border: "1px dashed #1f2630" }} />}
+    </div>
+  );
+}
+
+// Drop target + return-logging panel for cells out of storage.
+// Three states per cell:
+//   ⚡ isTesting       — solid color, actively cycling
+//   ?  isAwaitingReturn — dimmed, test done, click to log return date
+//   ↩  inTestArea only  — dashed green, already logged; click to move back
+function TestingPanel({ onTestList, selectedIdx, dimmed, moveToTestArea, onReturnOne, onReturnAll, onMoveBack, selectCell }) {
+  const [over, setOver] = React.useState(false);
+  // returning: null | "all" | <rptIdx>
+  const [returning, setReturning] = React.useState(null);
+  const [dateVal, setDateVal] = React.useState(today());
+
+  const awaitingList = onTestList.filter(({ c }) => isAwaitingReturn(c));
+
+  const openPicker = (key) => { setReturning(key); setDateVal(today()); };
+  const closePicker = () => setReturning(null);
+
+  const confirmReturn = () => {
+    if (!dateVal) return;
+    if (returning === "all") onReturnAll(dateVal);
+    else onReturnOne(returning, dateVal);
+    closePicker();
+  };
+
+  const yesterday = addDays(today(), -1);
+
+  return (
+    <div style={{ flex: 1, minWidth: 0, borderLeft: "2px dashed #2a303c", paddingLeft: 20 }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>Testing</span>
+        <span style={{ fontSize: 11, color: "#64748b" }}>· {onTestList.length} out of storage</span>
+        {awaitingList.length > 0 && returning !== "all" && (
+          <button onClick={() => openPicker("all")} style={{ marginLeft: "auto", ...btnSmall, borderColor: "#34d399", color: "#34d399", whiteSpace: "nowrap" }}>
+            ↩ Return all ({awaitingList.length}) to storage
+          </button>
+        )}
+      </div>
+
+      {/* Inline date picker — shown when returning a single cell or all.
+          The return-to-storage date starts the 28-day storage clock, so the
+          default is "today" (the day you're logging it). For a single cell we
+          also offer the auto-detected off-test date as a quick-pick. */}
+      {returning !== null && (() => {
+        const single = returning !== "all" ? (onTestList.find(x => x.i === returning) || {}).c : null;
+        const offEst = single ? ((lastEvent(single) || {}).offTest || single.estReturn) : null;
+        const tdy = today();
+        const quick = (label, d, accent) => (
+          <button key={label} onClick={() => setDateVal(d)} style={{
+            ...btnSmall, fontSize: 11,
+            borderColor: dateVal === d ? accent : "#2a303c",
+            color: dateVal === d ? accent : "#8891a0",
+            background: dateVal === d ? "rgba(255,255,255,0.05)" : "transparent",
+          }}>{label}</button>
+        );
+        return (
+          <div style={{ marginBottom: 10, padding: "10px 12px", background: "#1c2129", border: "1px solid #2a303c", borderRadius: 8 }}>
+            <div style={{ fontSize: 11, color: "#8891a0", marginBottom: 8, fontWeight: 500 }}>
+              {returning === "all"
+                ? `Returned to storage on — ${awaitingList.length} cell${awaitingList.length !== 1 ? "s" : ""}`
+                : `Returned to storage on — ${single?.cellId || ""}`}
+            </div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+              {quick("Returned today", tdy, "#34d399")}
+              <span style={{ fontSize: 10, color: "#3a4250" }}>or another date:</span>
+              {offEst && quick(`Off-test (${fmtDate(offEst)})`, offEst, "#a78bfa")}
+              {quick("Yesterday", yesterday, "#4e9af5")}
+              <input type="date" value={dateVal} onChange={e => setDateVal(e.target.value)}
+                style={{ padding: "3px 7px", borderRadius: 4, border: "1px solid #2a303c", background: "#0c0f14", color: "#e2e6ed", fontSize: 11, fontFamily: "inherit", outline: "none" }} />
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
+              <button onClick={confirmReturn} style={{ ...btnSmall, borderColor: "#34d399", color: "#34d399" }}>
+                Log &amp; return to storage
+              </button>
+              <button onClick={closePicker} style={{ ...btnSmall, color: "#64748b" }}>Cancel</button>
+              <span style={{ fontSize: 10, color: "#64748b", marginLeft: "auto" }}>↳ starts the 28-day storage clock · next RPT = this date + 28d</span>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Cell grid */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (!over) setOver(true); }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(e) => { e.preventDefault(); setOver(false); const idx = parseInt(e.dataTransfer.getData("text/plain"), 10); if (!isNaN(idx)) moveToTestArea(idx); }}
+        style={{ background: "#11151b", border: "1px solid " + (over ? "#4e9af5" : "#2a303c"), borderRadius: 10, padding: 14, minHeight: 120, transition: "border-color 0.1s" }}>
+        {onTestList.length === 0
+          ? <span style={{ fontSize: 11, color: "#3a4250", fontStyle: "italic" }}>No cells out of storage. Drag a cell here.</span>
+          : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 46px)", gap: 6 }}>
+              {onTestList.map(({ c, i }) => {
+                const awaiting = isAwaitingReturn(c);
+                const readyBack = c.inTestArea && !isOnTest(c);
+                const isSelected = returning === i;
+                const handleClick = () => {
+                  if (awaiting) { openPicker(i); }
+                  else if (readyBack) { onMoveBack(i); }
+                  else { selectCell(i); }
+                };
+                return (
+                  <div key={i} style={{ position: "relative", opacity: awaiting ? 0.7 : 1, outline: isSelected ? "2px solid #4e9af5" : "none", outlineOffset: 2, borderRadius: 6 }}>
+                    <CellSquare cell={c} idx={i} selected={selectedIdx === i} dim={dimmed(c)} solid={isOnTest(c)} showBar draggable onSelect={handleClick} />
+                    {readyBack && <div style={{ position: "absolute", inset: 0, borderRadius: 5, border: "1.5px dashed #34d399", pointerEvents: "none" }} />}
+                    {readyBack && <span style={{ position: "absolute", top: 1, left: 2, fontSize: 9, color: "#34d399", fontWeight: 700, lineHeight: 1, pointerEvents: "none" }}>↩</span>}
+                    {/* One-tap confirm: returned to storage TODAY (click the cell body for another date) */}
+                    {awaiting && (
+                      <button onClick={(e) => { e.stopPropagation(); onReturnOne(i, today()); }}
+                        title="Returned to storage today — confirm and place back"
+                        style={{ position: "absolute", top: -6, right: -6, width: 19, height: 19, borderRadius: "50%", border: "1.5px solid #34d399", background: "#0c0f14", color: "#34d399", fontSize: 11, fontWeight: 700, lineHeight: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3, padding: 0, fontFamily: "inherit", boxShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>✓</button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>}
+      </div>
+      <div style={{ fontSize: 10, color: "#3a4250", marginTop: 8, lineHeight: 1.5 }}>
+        ⚡ cycling · ✓ = returned today (one tap) · click a ? cell for another return date · drag from storage to move here
+      </div>
     </div>
   );
 }
@@ -2973,12 +3411,10 @@ function StorageSlot({ occupant, occupantIdx, chamber, shelf, slot, selectedIdx,
 // chambers/shelves. Drag to the Unplaced tray to pull a cell off its shelf.
 // A cell whose test just finished shows a "?" badge — click it to confirm the
 // date it returned to storage, which schedules its next RPT.
-function StorageView({ data, persist, tempFilter, selectedIdx, setSelectedIdx, onAdd, onReturn, onRemove }) {
+function StorageView({ data, persist, tempFilter, selectedIdx, setSelectedIdx, onAdd, onReturn, onReturnAll, onRemove, onOpenCell }) {
   const [search, setSearch] = React.useState("");
-  const [returnFor, setReturnFor] = React.useState(null); // rptIdx awaiting return-date confirm
   const cells = data.rptCells || [];
   const cfg = data.storageConfig || {};
-  const dur = (data.rptSettings && data.rptSettings.durationDays) || 4;
   const chamberTemp = {};
   (data.chambers || []).forEach(c => { chamberTemp[c.name] = c.temp; });
 
@@ -2998,9 +3434,17 @@ function StorageView({ data, persist, tempFilter, selectedIdx, setSelectedIdx, o
     const from = { ch: moving.assignedStorage, sh: moving.storageShelf || 0, sl: moving.storageSlot };
     if (occIdx >= 0) { cs[occIdx].assignedStorage = from.ch; cs[occIdx].storageShelf = from.sh; cs[occIdx].storageSlot = from.sl; }
     moving.assignedStorage = chamber; moving.storageShelf = shelf; moving.storageSlot = slot;
+    moving.inTestArea = false; // returning to storage clears manual test-area flag
     await persist(nd);
   };
-  const unplace = async (rptIdx) => { const nd = JSON.parse(JSON.stringify(data)); nd.rptCells[rptIdx].storageSlot = null; await persist(nd); };
+
+  const moveToTestArea = async (rptIdx) => {
+    const nd = JSON.parse(JSON.stringify(data));
+    nd.rptCells[rptIdx].inTestArea = true;
+    nd.rptCells[rptIdx].storageSlot = null;
+    await persist(nd);
+  };
+  const unplace = async (rptIdx) => { const nd = JSON.parse(JSON.stringify(data)); nd.rptCells[rptIdx].storageSlot = null; nd.rptCells[rptIdx].inTestArea = false; await persist(nd); };
   const setShelves = async (chamber, n) => {
     const nd = JSON.parse(JSON.stringify(data));
     const sc = nd.storageConfig = nd.storageConfig || {};
@@ -3015,19 +3459,35 @@ function StorageView({ data, persist, tempFilter, selectedIdx, setSelectedIdx, o
   const matchTemp = (c) => tempFilter === "all" || c.storageTemp === tempFilter;
   const dimmed = (c) => !(matchSearch(c) && matchTemp(c));
 
-  // Clicking an awaiting-return cell opens the return picker; otherwise details.
-  const selectCell = (idx) => { if (isAwaitingReturn(cells[idx])) setReturnFor(idx); else setSelectedIdx(idx); };
+  // Clicking a cell in a storage slot — awaiting cells are handled by TestingPanel directly.
+  const selectCell = (idx) => {
+    setSelectedIdx(idx);
+    if (onOpenCell && cells[idx]) onOpenCell(cells[idx].cellId);
+  };
 
-  const unplaced = cells.map((c, i) => ({ c, i })).filter(x => x.c.storageSlot == null || !x.c.assignedStorage);
-  const onDropTray = (e) => { e.preventDefault(); const idx = parseInt(e.dataTransfer.getData("text/plain"), 10); if (!isNaN(idx)) unplace(idx); };
+  // Clear inTestArea to move a cell back to its storage slot (date already logged).
+  const onMoveBack = async (rptIdx) => {
+    const nd = JSON.parse(JSON.stringify(data));
+    nd.rptCells[rptIdx].inTestArea = false;
+    await persist(nd);
+  };
+
+  const unplaced = cells.map((c, i) => ({ c, i })).filter(x => !x.c.inTestArea && !isOnTest(x.c) && (x.c.storageSlot == null || !x.c.assignedStorage));
+  const onDropTray = (e) => {
+    e.preventDefault();
+    const idx = parseInt(e.dataTransfer.getData("text/plain"), 10);
+    if (isNaN(idx)) return;
+    // Ghost (on-test) cells keep a reserved home so they have somewhere to
+    // return to — they can't be "unplaced" (that made them vanish). Relocate
+    // them by dragging to another slot instead.
+    if (isOnTest(cells[idx])) return;
+    unplace(idx);
+  };
 
   // Cells physically out of their storage slot — on a calendar-life RPT now
   // (⚡) or finished and awaiting a return date (?). One slot each in the
   // Testing rectangle, regardless of which chamber the test runs in.
-  const onTestList = cells.map((c, i) => ({ c, i })).filter(x => isOnTest(x.c));
-
-  const ret = returnFor != null ? cells[returnFor] : null;
-  const retDue = ret ? (ret.dueReturn || addDays((lastEvent(ret) || {}).start || today(), dur)) : null;
+  const onTestList = cells.map((c, i) => ({ c, i })).filter(x => isOnTest(x.c) || x.c.inTestArea);
 
   // Reset every listed cell's storage chamber from a lab Excel. Picking a file
   // uses (and saves as) the latest spreadsheet; this only moves storage
@@ -3080,7 +3540,13 @@ function StorageView({ data, persist, tempFilter, selectedIdx, setSelectedIdx, o
           const occCount = cells.filter(c => c.assignedStorage === ch && c.storageSlot != null).length;
           const cap = shelves.reduce((s, sh) => s + sh.cap, 0);
           const bySlot = {};
-          cells.forEach((c, i) => { if (c.assignedStorage === ch && c.storageSlot != null) bySlot[(c.storageShelf || 0) + ":" + c.storageSlot] = { c, i }; });
+          const ghostBySlot = {};   // cells whose home slot is here but are out on an RPT run
+          cells.forEach((c, i) => {
+            if (c.assignedStorage !== ch || c.storageSlot == null || c.inTestArea) return;
+            const k = (c.storageShelf || 0) + ":" + c.storageSlot;
+            if (isOnTest(c)) ghostBySlot[k] = { c, i };
+            else bySlot[k] = { c, i };
+          });
           const lastShelfOccupied = cells.some(c => c.assignedStorage === ch && (c.storageShelf || 0) >= shelves.length - 1 && shelves.length > 1 && c.storageSlot != null);
           return (
             <div key={ch} style={{ background: "#11151b", border: "1px solid #2a303c", borderRadius: 10, padding: 12, width: "fit-content" }}>
@@ -3114,9 +3580,11 @@ function StorageView({ data, persist, tempFilter, selectedIdx, setSelectedIdx, o
                   <div style={{ display: "grid", gridTemplateColumns: `repeat(${shelf.cols}, 46px)`, gap: 5 }}>
                     {Array.from({ length: shelf.cap }).map((_, sl) => {
                       const hit = bySlot[sh + ":" + sl];
+                      const gh = !hit ? ghostBySlot[sh + ":" + sl] : null;
                       return <StorageSlot key={sl} occupant={hit ? hit.c : null} occupantIdx={hit ? hit.i : null}
+                        ghost={gh ? gh.c : null} ghostIdx={gh ? gh.i : null}
                         chamber={ch} shelf={sh} slot={sl} selectedIdx={selectedIdx} dim={hit ? dimmed(hit.c) : false}
-                        onSelect={selectCell} onDropCell={moveCell} />;
+                        onSelect={selectCell} onConfirmReturn={onReturn} onDropCell={moveCell} />;
                     })}
                   </div>
                 </div>
@@ -3141,159 +3609,299 @@ function StorageView({ data, persist, tempFilter, selectedIdx, setSelectedIdx, o
         </div>
 
         {/* ── Testing — right third, behind a dashed divider ── */}
-        <div style={{ flex: 1, minWidth: 0, borderLeft: "2px dashed #2a303c", paddingLeft: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 700 }}>Testing</span>
-            <span style={{ fontSize: 11, color: "#64748b" }}>· {onTestList.length} out of storage</span>
-          </div>
-          <div style={{ background: "#11151b", border: "1px solid #2a303c", borderRadius: 10, padding: 14, minHeight: 120 }}>
-            {onTestList.length === 0
-              ? <span style={{ fontSize: 11, color: "#3a4250", fontStyle: "italic" }}>No cells on test right now.</span>
-              : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 46px)", gap: 6 }}>
-                  {onTestList.map(({ c, i }) => (
-                    <CellSquare key={i} cell={c} idx={i} selected={selectedIdx === i} dim={dimmed(c)} solid draggable onSelect={selectCell} />
-                  ))}
-                </div>}
-          </div>
-          <div style={{ fontSize: 10, color: "#3a4250", marginTop: 8, lineHeight: 1.5 }}>
-            One slot per cell on a calendar-life RPT (any chamber). ⚡ cycling · ? confirm return.
-          </div>
-        </div>
+        <TestingPanel onTestList={onTestList} selectedIdx={selectedIdx} dimmed={dimmed} moveToTestArea={moveToTestArea} onReturnOne={onReturn} onReturnAll={onReturnAll} onMoveBack={onMoveBack} selectCell={selectCell} />
       </div>
-
-      {ret && (
-        <ReturnPopover cell={ret} due={retDue} estReturn={ret.estReturn}
-          onPick={(d) => { onReturn(returnFor, d); setReturnFor(null); }}
-          onRemove={() => { onRemove(returnFor); setReturnFor(null); }}
-          onClose={() => setReturnFor(null)} />
-      )}
     </div>
-  );
-}
-
-// "Returned to storage on:" picker shown when a finished cell needs its return
-// date confirmed. Offers the due date, the next two business days, a custom
-// date, and the option to remove the cell from calendar-life testing.
-function ReturnPopover({ cell, due, estReturn, onPick, onRemove, onClose }) {
-  const [custom, setCustom] = React.useState(estReturn || due || today());
-  const opts = [
-    { label: "The day it was due", d: due },
-    { label: "Next business day", d: due ? addBusinessDays(due, 1) : null },
-    { label: "Two business days after", d: due ? addBusinessDays(due, 2) : null },
-  ];
-  return (
-    <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 210 }} />
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 211, background: "#11151b", border: "1px solid #2a303c", borderRadius: 10, padding: 20, width: 340, boxShadow: "0 12px 40px rgba(0,0,0,0.5)" }}>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>{cell.cellId}</div>
-        <div style={{ fontSize: 12, color: "#8891a0", marginTop: 4, marginBottom: 14 }}>Returned to storage on:</div>
-        {estReturn && (
-          <button onClick={() => onPick(estReturn)} style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", marginBottom: 6,
-            padding: "9px 12px", borderRadius: 6, border: "1px solid #a78bfa", background: "rgba(167,139,250,0.12)",
-            color: "#e2e6ed", cursor: "pointer", fontSize: 12, fontFamily: "inherit",
-          }}>
-            <span>Detected off-test <span style={{ color: "#64748b", fontSize: 10 }}>(from data)</span></span>
-            <span style={{ color: "#a78bfa", fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>{fmtDateFull(estReturn)}</span>
-          </button>
-        )}
-        {opts.map((o, i) => (
-          <button key={i} disabled={!o.d} onClick={() => onPick(o.d)} style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", marginBottom: 6,
-            padding: "9px 12px", borderRadius: 6, border: "1px solid #2a303c", background: "transparent",
-            color: o.d ? "#e2e6ed" : "#3a4250", cursor: o.d ? "pointer" : "default", fontSize: 12, fontFamily: "inherit",
-          }}>
-            <span>{o.label}</span>
-            <span style={{ color: "#34d399", fontFamily: "'JetBrains Mono', monospace" }}>{o.d ? fmtDateFull(o.d) : "—"}</span>
-          </button>
-        ))}
-        <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}>
-          <input type="date" value={custom} onChange={e => setCustom(e.target.value)}
-            style={{ flex: 1, padding: "7px 10px", borderRadius: 6, border: "1px solid #2a303c", background: "#0c0f14", color: "#e2e6ed", fontSize: 12, fontFamily: "inherit", outline: "none" }} />
-          <button onClick={() => custom && onPick(custom)} style={{ ...btnSmall, borderColor: "#4e9af5", color: "#4e9af5" }}>Set</button>
-        </div>
-        <div style={{ borderTop: "1px solid #1a1f27", marginTop: 14, paddingTop: 12, display: "flex", justifyContent: "space-between" }}>
-          <button onClick={onRemove} style={{ ...btnSmall, borderColor: "#f87171", color: "#f87171" }}>Move cell to archive</button>
-          <button onClick={onClose} style={btnSecondary}>Cancel</button>
-        </div>
-      </div>
-    </>
   );
 }
 
 // Right-hand drawer with full detail for one cell. Scheduling is automatic
 // (driven by detected runs + the 4-on/28-off cadence), so it's read-only.
-function CellDetailDrawer({ data, rptIdx, onClose, onRemove }) {
-  const r = (data.rptCells || [])[rptIdx];
-  if (!r) return null;
-  const testing = isTesting(r), awaiting = isAwaitingReturn(r);
-  const daysUntil = r.nextRptStart ? daysBetween(today(), r.nextRptStart) : null;
-  const statusColor = (testing || awaiting) ? "#f87171" : daysUntil == null ? "#64748b" : daysUntil <= 3 ? "#f87171" : daysUntil <= 14 ? "#fbbf24" : "#34d399";
-  const statusText = testing ? "On RPT now" : awaiting ? "Awaiting return" : r.nextRptStart ? (daysUntil <= 0 ? "RPT due" : `Next RPT in ${daysUntil}d`) : "No schedule";
-  const loc = r.storageSlot != null
-    ? `${r.assignedStorage || "—"} · shelf ${(r.storageShelf || 0) + 1}, slot ${r.storageSlot + 1}`
-    : (r.assignedStorage ? `${r.assignedStorage} (unplaced)` : "Unplaced");
-  // Full run history: every RPT this cell has been on, newest first. The open
-  // (last) event shows whether it's cycling now or waiting for a return date.
-  const events = r.events || [];
+// Gather everything known about a cell from every data source, keyed by
+// cellId. The cell is the source of truth; any view can hand us a cellId and
+// get the same unified profile back. All parts are optional.
+function buildCellProfile(data, cellId) {
+  if (!cellId) return null;
+  let channel = null;
+  (data.chambers || []).forEach((cb, ci) => (cb.channels || []).forEach((ch, chi) => {
+    if (ch.cellId === cellId) channel = { ...ch, chamberName: cb.name, chamberTemp: cb.temp, ci, chi };
+  }));
+  const rptIdx = (data.rptCells || []).findIndex(c => c.cellId === cellId);
+  const rpt = rptIdx >= 0 ? data.rptCells[rptIdx] : null;
+  const archived = (data.archivedCells || {})[cellId] || null; // retired calendar-life, full history
+  const folder = (data.archive || {})[cellId] || null;          // folder sweep — every test ever run
+  const note = (data.cellNotes || {})[cellId] || "";
+  // Project resolves from the live channel (if on one) else the durable per-cell
+  // metadata — so it's visible/editable for calendar-life cells too.
+  const cellMeta = (data.cellMeta || {})[cellId] || {};
+  const project = (channel && channel.project) || cellMeta.project || "";
+  const analysisGroup = (channel && channel.analysisGroup) || cellMeta.analysisGroup || "";
+  return { cellId, channel, rptIdx, rpt, archived, folder, note, project, analysisGroup };
+}
+
+// Unified cell drawer — driven by cellId, opens from any view. Renders only
+// the sections that apply to the cell (live channel, RPT schedule/history,
+// archived test history, notes).
+function CellDrawer({ data, cellId, persist, onClose, onArchive, onUnarchive }) {
+  const profile = buildCellProfile(data, cellId);
+  const [noteDraft, setNoteDraft] = React.useState("");
+  const [noteSaved, setNoteSaved] = React.useState(false);
+  const [editReturn, setEditReturn] = React.useState(null); // null = not editing; else the date string
+  const [projDraft, setProjDraft] = React.useState("");
+  const [projSaved, setProjSaved] = React.useState(false);
+  React.useEffect(() => {
+    setNoteDraft((data.cellNotes && data.cellNotes[cellId]) || "");
+    setNoteSaved(false);
+    setEditReturn(null);
+    setProjDraft((profile && profile.project) || "");
+    setProjSaved(false);
+  }, [cellId]);
+  if (!profile) return null;
+  const { channel, rpt, archived, folder } = profile;
+
+  const saveProject = async () => {
+    if (!persist) return;
+    const nd = JSON.parse(JSON.stringify(data));
+    nd.cellProjects = nd.cellProjects || {};
+    nd.cellProjects[cellId] = projDraft.trim();
+    // Reflect immediately on the live channel (if any) so the change shows now.
+    (nd.chambers || []).forEach(cb => (cb.channels || []).forEach(ch => { if (ch.cellId === cellId) ch.project = projDraft.trim() || null; }));
+    nd.cellMeta = nd.cellMeta || {};
+    nd.cellMeta[cellId] = { ...(nd.cellMeta[cellId] || {}), project: projDraft.trim() || null };
+    await persist(nd);
+    setProjSaved(true);
+  };
+
+  const saveNote = async () => {
+    if (!persist) return;
+    const nd = JSON.parse(JSON.stringify(data));
+    nd.cellNotes = nd.cellNotes || {};
+    const txt = noteDraft.trim();
+    if (txt) nd.cellNotes[cellId] = txt;
+    else delete nd.cellNotes[cellId];
+    await persist(nd);
+    setNoteSaved(true);
+  };
+
+  // The RPT-bearing record is the active planner cell if present, else the
+  // archived calendar-life record (both carry an `events` history).
+  const rptLike = rpt || archived;
+  const events = (rptLike && rptLike.events) || [];
+  const testing = rpt ? isTesting(rpt) : false;
+  const awaiting = rpt ? isAwaitingReturn(rpt) : false;
+  const daysUntil = rpt && rpt.nextRptStart ? daysBetween(today(), rpt.nextRptStart) : null;
+
+  let statusText, statusColor;
+  if (rpt) {
+    statusColor = (testing || awaiting) ? "#f87171" : daysUntil == null ? "#64748b" : daysUntil <= 3 ? "#f87171" : daysUntil <= 14 ? "#fbbf24" : "#34d399";
+    statusText = testing ? "On RPT now" : awaiting ? "Awaiting return" : rpt.nextRptStart ? (daysUntil <= 0 ? "RPT due" : `Next RPT in ${daysUntil}d`) : "No schedule";
+  } else if (channel) {
+    statusColor = "#4e9af5";
+    statusText = channel.filename ? testTypeLabel(channel.filename) : (channel.currentTest || "On channel");
+  } else if (archived) {
+    statusColor = "#a78bfa";
+    statusText = "Archived" + (archived.archivedOn ? " · " + fmtDate(archived.archivedOn) : "");
+  } else {
+    statusColor = "#8891a0";
+    statusText = "Archived";
+  }
+
+  const restDays = (data.rptSettings && data.rptSettings.restDays) || 28;
   const history = events.map((ev, i) => ({
-    n: i + 1, start: ev.start, returned: ev.returned, open: !ev.returned, file: ev.file,
+    n: i + 1, start: ev.start, startTs: ev.startTs, offTest: ev.offTest, returned: ev.returned, open: !ev.returned, file: ev.file,
   })).reverse();
-  const firstStart = events.length ? events[0].start : r.anchorDate;
-  // Next few projected RPTs from the cadence.
+
+  // Index (in the original events array) of the most recent closed event — its
+  // return date is editable for low-stress corrections on an active cell.
+  let lastReturnedIdx = -1;
+  for (let i = events.length - 1; i >= 0; i--) { if (events[i].returned) { lastReturnedIdx = i; break; } }
+
+  // Edit the most recent return date. If it's the cell's latest event (resting),
+  // also reschedule the next RPT off it and drop any Excel pin — the user's
+  // physical return now governs. If a later (open) run exists, just fix the date.
+  const saveReturn = async (evIdx, dateStr) => {
+    if (!persist || !rpt || !dateStr) return;
+    const nd = JSON.parse(JSON.stringify(data));
+    const cell = nd.rptCells[profile.rptIdx];
+    const ev = cell && cell.events && cell.events[evIdx];
+    if (!ev) return;
+    ev.returned = dateStr;
+    if (evIdx === cell.events.length - 1) {
+      cell.nextRptStart = addDays(dateStr, restDays);
+      cell.nextRptOverride = null;
+    }
+    await persist(nd);
+    setEditReturn(null);
+  };
+
   const upcoming = [];
-  if (r.nextRptStart) { let d = r.nextRptStart; for (let i = 0; i < 4; i++) { upcoming.push(d); d = addDays(d, RPT_PERIOD_DAYS); } }
+  if (rpt && rpt.nextRptStart) { let d = rpt.nextRptStart; for (let i = 0; i < 4; i++) { upcoming.push(d); d = addDays(d, RPT_PERIOD_DAYS); } }
+
   const row = (label, value) => (
-    <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #1a1f27", fontSize: 12 }}>
-      <span style={{ color: "#64748b" }}>{label}</span>
-      <span style={{ color: "#e2e6ed", fontWeight: 500 }}>{value}</span>
+    <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #1a1f27", fontSize: 12, gap: 12 }}>
+      <span style={{ color: "#64748b", flexShrink: 0 }}>{label}</span>
+      <span style={{ color: "#e2e6ed", fontWeight: 500, textAlign: "right", minWidth: 0, wordBreak: "break-word" }}>{value}</span>
     </div>
   );
+  const sectionHdr = (txt) => (
+    <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.4px" }}>{txt}</div>
+  );
+
+  const soc = rpt ? rpt.soc : (archived ? archived.soc : null);
+  const storageTemp = (rpt && rpt.storageTemp) || (archived && archived.storageTemp) || (channel && channel.chamberTemp) || null;
+  const loc = rpt
+    ? (rpt.storageSlot != null
+        ? `${rpt.assignedStorage || "—"} · shelf ${(rpt.storageShelf || 0) + 1}, slot ${rpt.storageSlot + 1}`
+        : (rpt.assignedStorage ? `${rpt.assignedStorage} (unplaced)` : "Unplaced"))
+    : null;
+
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200 }} />
       <div style={{ position: "fixed", top: 0, right: 0, height: "100vh", width: 360, background: "#11151b", borderLeft: "1px solid #2a303c", zIndex: 201, padding: 20, overflowY: "auto", boxShadow: "-8px 0 24px rgba(0,0,0,0.4)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>{r.cellId}</div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>{cellId}</div>
             <span style={{ display: "inline-block", marginTop: 6, fontSize: 11, padding: "2px 8px", borderRadius: 4, background: statusColor + "22", color: statusColor, fontWeight: 600 }}>{statusText}</span>
           </div>
           <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#64748b", fontSize: 20, cursor: "pointer", lineHeight: 1 }}>×</button>
         </div>
 
-        {row("SOC", r.soc != null ? (r.soc * 100).toFixed(0) + "%" : "—")}
-        {row("Storage temp", r.storageTemp || "—")}
-        {row("Location", loc)}
-        {row("RPT channel", r.assignedChannel || "—")}
-        {row("Cadence", `${r.nextRptMonth || "—"} · ${RPT_ON_DAYS}d on / ${RPT_PERIOD_DAYS - RPT_ON_DAYS}d storage`)}
-        {row("First RPT", firstStart ? fmtDateFull(firstStart) : "—")}
-        {row("Type", r.rptType || "—")}
-
-        <div style={{ marginTop: 18 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.4px" }}>RPT history ({events.length})</div>
-          {history.length === 0 && <div style={{ fontSize: 11, color: "#3a4250", fontStyle: "italic" }}>No runs recorded yet.</div>}
-          {history.map((h, i) => {
-            const offText = h.open ? (testing ? "on test" : "awaiting return") : fmtDateFull(h.returned);
-            const offColor = h.open ? (testing ? "#4e9af5" : "#fbbf24") : "#8891a0";
-            return (
-              <div key={i} style={{ padding: "5px 0", borderBottom: "1px solid #1a1f27", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ color: "#64748b", minWidth: 34 }}>#{h.n}</span>
-                  <span style={{ color: "#e2e6ed", flex: 1, textAlign: "right" }}>{fmtDateFull(h.start)}</span>
-                  <span style={{ color: "#3a4250", margin: "0 6px" }}>→</span>
-                  <span style={{ color: offColor, minWidth: 86, textAlign: "right" }}>{offText}</span>
-                </div>
-                {h.file && (
-                  <div title={h.file} style={{ marginTop: 2, fontSize: 9, color: "#4a5260", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{h.file}</div>
-                )}
-              </div>
-            );
-          })}
+        {/* Project — always visible & editable for any cell (incl. calendar-life) */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.4px" }}>Project</span>
+            {projSaved && <span style={{ fontSize: 10, color: "#34d399" }}>Saved ✓</span>}
+            {profile.analysisGroup && <span style={{ fontSize: 10, color: "#64748b" }}>· {profile.analysisGroup}</span>}
+          </div>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <input
+              value={projDraft}
+              onChange={e => { setProjDraft(e.target.value); setProjSaved(false); }}
+              onKeyDown={e => { if (e.key === "Enter") saveProject(); }}
+              placeholder="No project — type to add…"
+              style={{ ...inputStyle, flex: 1, fontFamily: "inherit" }}
+            />
+            <button onClick={saveProject} disabled={!persist || projDraft.trim() === ((profile.project) || "")}
+              style={{ ...btnSmall, border: "1px solid #4e9af5", background: "rgba(78,154,245,0.15)", color: "#4e9af5", fontWeight: 500,
+                opacity: (!persist || projDraft.trim() === ((profile.project) || "")) ? 0.4 : 1 }}>Save</button>
+          </div>
         </div>
+
+        {/* Live channel assignment (Active view cells) */}
+        {channel && (
+          <div style={{ marginBottom: 8 }}>
+            {sectionHdr("On channel now")}
+            {row("Chamber", `${channel.chamberName}${channel.chamberTemp ? " · " + channel.chamberTemp : ""}`)}
+            {row("Channel", channel.channelId || "—")}
+            {row("Test", channel.filename ? testTypeLabel(channel.filename) : (channel.currentTest || "—"))}
+            {(channel.startTs || channel.startDate) && row("Start", fmtDateTime(channel.startTs || channel.startDate))}
+            {channel.cellFormat && row("Format", channel.cellFormat)}
+            {channel.filename && (
+              <div style={{ marginTop: 4 }}>
+                <div style={{ fontSize: 9.5, color: "#5b6573", fontFamily: "'JetBrains Mono', monospace", wordBreak: "break-all", lineHeight: 1.4 }}>
+                  <span style={{ color: "#3a4250" }}>file: </span>{channel.filename.replace(/\.xlsx$/i, "")}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* RPT planner facts (active calendar-life cells) */}
+        {rpt && (
+          <div style={{ marginTop: channel ? 14 : 0, marginBottom: 8 }}>
+            {channel && sectionHdr("Calendar-life RPT")}
+            {row("SOC", soc != null ? (soc * 100).toFixed(0) + "%" : "—")}
+            {row("Storage temp", storageTemp || "—")}
+            {row("Location", loc)}
+            {row("RPT channel", rpt.assignedChannel || "—")}
+            {row("Cadence", `${rpt.nextRptMonth || "—"} · ${RPT_ON_DAYS}d on / ${RPT_PERIOD_DAYS - RPT_ON_DAYS}d storage`)}
+            {row("First RPT", (events.length ? events[0].start : rpt.anchorDate) ? fmtDateFull(events.length ? events[0].start : rpt.anchorDate) : "—")}
+            {row("Type", rpt.rptType || "—")}
+          </div>
+        )}
+
+        {/* Archived calendar-life summary */}
+        {!rpt && archived && (
+          <div style={{ marginBottom: 8 }}>
+            {row("SOC", soc != null ? (soc * 100).toFixed(0) + "%" : "—")}
+            {row("Storage temp", storageTemp || "—")}
+            {row("Type", archived.rptType || "—")}
+            {archived.archivedOn && row("Archived on", fmtDateFull(archived.archivedOn))}
+          </div>
+        )}
+
+        {/* RPT history (active or archived calendar-life cells) */}
+        {rptLike && (
+          <div style={{ marginTop: 18 }}>
+            {sectionHdr(`RPT history (${events.length})`)}
+            {history.length === 0 && <div style={{ fontSize: 11, color: "#3a4250", fontStyle: "italic" }}>No runs recorded yet.</div>}
+            {history.map((h, i) => {
+              const testDays = (h.start && h.offTest) ? daysBetween(h.start, h.offTest) : null;
+              const nextStart = h.returned ? addDays(h.returned, restDays) : null;
+              const openColor = testing ? "#4e9af5" : "#fbbf24";
+              return (
+                <div key={i} style={{ padding: "7px 0", borderBottom: "1px solid #1a1f27", fontSize: 10.5, fontFamily: "'JetBrains Mono', monospace" }}>
+                  {/* on test → off test (the run itself; keeps the true test duration) */}
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+                    <span style={{ color: "#64748b", fontWeight: 600 }}>#{h.n}</span>
+                    <span><span style={{ color: "#3a4250" }}>start </span><span style={{ color: "#e2e6ed" }}>{fmtDateTime(h.startTs || h.start)}</span></span>
+                    <span style={{ color: "#3a4250" }}>→</span>
+                    <span><span style={{ color: "#3a4250" }}>off-test </span><span style={{ color: "#a78bfa" }}>{h.offTest ? fmtDate(h.offTest) : "—"}</span></span>
+                    {testDays != null && <span style={{ color: "#3a4250" }}>({testDays}d run)</span>}
+                    {h.open && h.startTs && (() => {
+                      const hrs = hoursSince(h.startTs);
+                      return hrs != null ? <span style={{ color: hrs >= RPT_ON_DAYS * 24 ? "#fbbf24" : "#4e9af5", fontWeight: 600 }}>{hrs.toFixed(1)}h on test / {RPT_ON_DAYS * 24}h</span> : null;
+                    })()}
+                  </div>
+                  {/* returned to storage → schedules the next RPT (returned + rest).
+                      The most recent return is editable for low-stress fixes. */}
+                  {(() => {
+                    const editable = !!rpt && !!persist && !h.open && (h.n - 1) === lastReturnedIdx;
+                    const editing = editable && editReturn !== null;
+                    return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 2, paddingLeft: 18 }}>
+                    {h.open
+                      ? <span style={{ color: openColor }}>{testing ? "● on test" : "◌ awaiting return"}</span>
+                      : editing
+                        ? <>
+                            <span style={{ color: "#3a4250" }}>returned </span>
+                            <input type="date" value={editReturn} onChange={e => setEditReturn(e.target.value)} autoFocus
+                              style={{ padding: "1px 5px", borderRadius: 4, border: "1px solid #34d399", background: "#0c0f14", color: "#e2e6ed", fontSize: 10.5, fontFamily: "inherit", outline: "none" }} />
+                            <button onClick={() => saveReturn(h.n - 1, editReturn)} title="Save" style={{ ...btnSmall, padding: "1px 6px", borderColor: "#34d399", color: "#34d399" }}>✓</button>
+                            <button onClick={() => setEditReturn(null)} title="Cancel" style={{ ...btnSmall, padding: "1px 6px", color: "#64748b" }}>✕</button>
+                            <span style={{ color: "#3a4250" }}>→ next RPT </span>
+                            <span style={{ color: "#8891a0" }}>{editReturn ? fmtDate(addDays(editReturn, restDays)) : "—"}</span>
+                          </>
+                        : <>
+                            <span style={{ color: "#3a4250" }}>returned </span>
+                            {editable
+                              ? <span onClick={() => setEditReturn(h.returned)} title="Click to edit the return date"
+                                  style={{ color: "#34d399", cursor: "pointer", borderBottom: "1px dashed rgba(52,211,153,0.5)" }}>{fmtDate(h.returned)} ✎</span>
+                              : <span style={{ color: "#34d399" }}>{fmtDate(h.returned)}</span>}
+                            {nextStart && <><span style={{ color: "#3a4250" }}>→ next RPT </span><span style={{ color: "#8891a0" }}>{fmtDate(nextStart)}</span></>}
+                          </>
+                    }
+                  </div>
+                    );
+                  })()}
+                  <div style={{ marginTop: 3, minWidth: 0 }}>
+                    <div style={{ fontSize: 9.5, color: "#5b6573", fontFamily: "'JetBrains Mono', monospace", wordBreak: "break-all", lineHeight: 1.4, fontStyle: h.file ? "normal" : "italic" }}>
+                      <span style={{ color: "#3a4250" }}>test: </span>{h.file ? h.file.replace(/\.xlsx$/i, "") : "—"}
+                      {h.file && channelFromFile(h.file) && (
+                        <span style={{ marginLeft: 8, color: "#3a5070", fontSize: 9 }}>ch: {channelFromFile(h.file)}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {upcoming.length > 0 && (
           <div style={{ marginTop: 18 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.4px" }}>Projected RPTs</div>
+            {sectionHdr("Projected RPTs")}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {upcoming.map((d, i) => (
                 <span key={i} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 4, background: i === 0 ? statusColor + "22" : "#0c0f14", color: i === 0 ? statusColor : "#8891a0", fontFamily: "'JetBrains Mono', monospace" }}>{fmtDateFull(d)}</span>
@@ -3302,12 +3910,63 @@ function CellDetailDrawer({ data, rptIdx, onClose, onRemove }) {
           </div>
         )}
 
+        {/* Every test ever run on this cell, from the folder sweep */}
+        {folder && folder.tests && Object.keys(folder.tests).length > 0 && (
+          <div style={{ marginTop: 18 }}>
+            {sectionHdr("Test history")}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {Object.entries(folder.tests).map(([t, d]) => {
+                // Prefer the filename-derived label so backend "Unknown" entries
+                // (e.g. formation FM/0.1CFM files) resolve to a real test type.
+                const label = (t === "Unknown" && d.file) ? testTypeLabel(d.file) : t;
+                return (
+                  <div key={t} style={{ fontSize: 10, padding: "4px 7px", borderRadius: 3, background: "#0c0f14", fontFamily: "'JetBrains Mono', monospace" }}>
+                    <div>
+                      <span style={{ color: "#8891a0" }}>{label}</span>
+                      {" "}
+                      <span style={{ color: "#3a4250" }}>{d.first === d.last ? fmtDate(d.first) : fmtDate(d.first) + "–" + fmtDate(d.last)}</span>
+                    </div>
+                    {d.file && (
+                      <div style={{ fontSize: 9, color: "#5b6573", wordBreak: "break-all", lineHeight: 1.4, marginTop: 2 }}>
+                        {d.file.replace(/\.xlsx$/i, "")}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginTop: 18 }}>
+          {sectionHdr("Notes")}
+          <textarea
+            value={noteDraft}
+            onChange={e => { setNoteDraft(e.target.value); setNoteSaved(false); }}
+            placeholder="Anything worth remembering about this cell…"
+            rows={3}
+            style={{ ...inputStyle, resize: "vertical", minHeight: 56, fontFamily: "inherit", width: "100%", boxSizing: "border-box" }}
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+            <button onClick={saveNote} style={{ ...btnSmall, border: "1px solid #4e9af5", background: "rgba(78,154,245,0.15)", color: "#4e9af5", fontWeight: 500 }}>Save note</button>
+            {noteSaved && <span style={{ fontSize: 11, color: "#34d399" }}>Saved ✓</span>}
+          </div>
+        </div>
+
+        {/* Cell-state actions vary by where the cell lives */}
         <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-          <button onClick={() => { onRemove(rptIdx); onClose(); }} style={{ ...btnSmall, borderColor: "#f87171", color: "#f87171" }}>Move cell to archive</button>
+          {rpt && onArchive && (
+            <button onClick={() => { onArchive(cellId); onClose(); }} style={{ ...btnSmall, borderColor: "#f87171", color: "#f87171" }}>Move cell to archive</button>
+          )}
+          {!rpt && archived && onUnarchive && (
+            <button onClick={() => { onUnarchive(cellId); onClose(); }} style={{ ...btnSmall, borderColor: "#34d399", color: "#34d399" }}>↩ Restore to planner</button>
+          )}
         </div>
-        <div style={{ fontSize: 10, color: "#3a4250", marginTop: 10, lineHeight: 1.5 }}>
-          Storage location auto-assigned from the filename temperature — drag the cell on the Storage tab to correct it.
-        </div>
+        {rpt && (
+          <div style={{ fontSize: 10, color: "#3a4250", marginTop: 10, lineHeight: 1.5 }}>
+            Storage location auto-assigned from the filename temperature — drag the cell on the Storage tab to correct it.
+          </div>
+        )}
       </div>
     </>
   );
