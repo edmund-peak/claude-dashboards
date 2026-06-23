@@ -2261,7 +2261,7 @@ function RptTab({ data, stats, onAdd, onDelete, onLogEvent, persist, tempFilter,
     <div>
       {/* ── RPT Sub-Tab Selector ── */}
       <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-        {[["storage", "Storage"], ["gantt", "Channel Usage"]].map(([key, label]) => (
+        {[["storage", "Storage"], ["gantt", "Channel Usage"], ["intervals", "Rest Periods"]].map(([key, label]) => (
           <button key={key} onClick={() => setRptSubTab(key)} style={{
             padding: "7px 18px", borderRadius: 6, border: "1px solid " + (rptSubTab === key ? "#a78bfa" : "#2a303c"),
             background: rptSubTab === key ? "rgba(167,139,250,0.12)" : "transparent",
@@ -2280,9 +2280,211 @@ function RptTab({ data, stats, onAdd, onDelete, onLogEvent, persist, tempFilter,
           selectedIdx={selectedIdx} setSelectedIdx={setSelectedIdx} onAdd={onAdd}
           onReturn={handleReturn} onReturnAll={handleReturnAll} onRemove={handleRemove} onOpenCell={onOpenCell} />
       )}
+      {rptSubTab === "intervals" && (
+        <StorageIntervalsView data={data} />
+      )}
       {rptSubTab === "gantt" && (
         <ChannelUsageGantt data={data} persist={persist} tempFilter={tempFilter} onOpenCell={onOpenCell} />
       )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// STORAGE INTERVALS VIEW
+// ═══════════════════════════════════════════════════
+function StorageIntervalsView({ data }) {
+  const [search, setSearch] = React.useState("");
+  const [projectFilter, setProjectFilter] = React.useState("all");
+
+  const restDays = (data.rptSettings && data.rptSettings.restDays) || 28;
+
+  const projOf = (cellId) => { const m = (cellId || "").match(/^(CRD_\d+)/); return m ? m[1] : null; };
+
+  const activeCells = (data.rptCells || []).map(c => ({ cellId: c.cellId, events: c.events || [], storageTemp: c.storageTemp, archived: false }));
+  const archivedCells = Object.entries(data.archivedCells || {}).map(([cellId, rec]) => ({
+    cellId, events: rec.events || [], storageTemp: rec.storageTemp, archived: true,
+  }));
+
+  const availableProjects = React.useMemo(() => {
+    const s = new Set();
+    [...activeCells, ...archivedCells].forEach(c => { const p = projOf(c.cellId); if (p) s.add(p); });
+    return Array.from(s).sort();
+  }, [activeCells, archivedCells]);
+
+  const matchSearch = (c) => !search.trim() || c.cellId.toLowerCase().includes(search.trim().toLowerCase());
+  const matchProject = (c) => projectFilter === "all" || projOf(c.cellId) === projectFilter;
+
+  const visibleCells = [...activeCells, ...archivedCells].filter(c => {
+    if (!matchSearch(c) || !matchProject(c)) return false;
+    if (c.archived && !search.trim() && projectFilter === "all") return false;
+    return true;
+  }).sort((a, b) => {
+    const pA = projOf(a.cellId) || "", pB = projOf(b.cellId) || "";
+    if (pA !== pB) return pA.localeCompare(pB);
+    return a.cellId.localeCompare(b.cellId);
+  });
+
+  // For each cell compute storage intervals: [{days, projected, onTest}]
+  const computeIntervals = (cell) => {
+    const evs = cell.events;
+    const result = [];
+    for (let i = 0; i < evs.length - 1; i++) {
+      const ret = evs[i].returned;
+      const nxt = evs[i + 1].start;
+      result.push({ days: (ret && nxt) ? daysBetween(ret, nxt) : null, projected: false, onTest: false });
+    }
+    const last = evs[evs.length - 1];
+    if (last) {
+      if (!last.returned) {
+        result.push({ days: null, projected: false, onTest: true });
+      } else {
+        result.push({ days: restDays, projected: true, onTest: false });
+      }
+    }
+    return result;
+  };
+
+  const intervalsByCell = visibleCells.map(c => computeIntervals(c));
+  const maxCols = intervalsByCell.reduce((m, ivs) => Math.max(m, ivs.length), 0);
+
+  const colHeaders = [];
+  for (let i = 0; i < maxCols; i++) colHeaders.push(`RPT ${i + 1}→${i + 2}`);
+
+  const cellStyle = (iv) => {
+    if (!iv) return { color: "#3a4250" };
+    if (iv.onTest) return { color: "#4e9af5", fontStyle: "italic" };
+    if (iv.projected) return { color: "#64748b", fontStyle: "italic" };
+    if (iv.days == null) return { color: "#3a4250" };
+    const dev = Math.abs(iv.days - restDays);
+    if (dev === 0) return { color: "#34d399" };
+    if (dev <= 3) return { color: "#a78bfa" };
+    if (dev <= 7) return { color: "#fbbf24" };
+    return { color: "#f87171" };
+  };
+
+  return (
+    <div>
+      {/* ── Controls ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+        <input
+          value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Search cell ID…"
+          style={{ padding: "5px 10px", borderRadius: 5, border: "1px solid " + (search ? "#4e9af5" : "#2a303c"),
+            background: "#0c0f14", color: "#e2e6ed", fontSize: 12, fontFamily: "inherit",
+            outline: "none", width: 200 }} />
+        {search && <button onClick={() => setSearch("")}
+          style={{ padding: "3px 7px", borderRadius: 4, border: "1px solid #2a303c", background: "transparent", color: "#64748b", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>×</button>}
+        <span style={{ color: "#2a303c", margin: "0 2px" }}>│</span>
+        <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", color: "#64748b" }}>Project:</span>
+        <select value={projectFilter} onChange={e => setProjectFilter(e.target.value)}
+          style={{ padding: "3px 8px", borderRadius: 4,
+            border: "1px solid " + (projectFilter !== "all" ? "#4e9af5" : "#2a303c"),
+            background: projectFilter !== "all" ? "rgba(78,154,245,0.12)" : "#0c0f14",
+            color: projectFilter !== "all" ? "#4e9af5" : "#8891a0",
+            cursor: "pointer", fontSize: 11, fontFamily: "inherit", outline: "none", minWidth: 120 }}>
+          <option value="all">All</option>
+          {availableProjects.length > 0 && <option disabled>──────────</option>}
+          {availableProjects.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+        {projectFilter !== "all" && (
+          <button onClick={() => setProjectFilter("all")}
+            style={{ padding: "3px 7px", borderRadius: 4, border: "1px solid #2a303c", background: "transparent", color: "#64748b", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>×</button>
+        )}
+        <span style={{ fontSize: 11, color: "#3a4250", marginLeft: 4 }}>
+          {visibleCells.length} cell{visibleCells.length !== 1 ? "s" : ""}
+          {visibleCells.some(c => c.archived) && <span style={{ color: "#fbbf24", marginLeft: 6 }}>includes archived</span>}
+        </span>
+        <button
+          onClick={() => {
+            const header = ["Device ID", ...colHeaders.map((h, i) => h + (i === colHeaders.length - 1 ? " (proj*)" : ""))];
+            const rows = visibleCells.map((cell, ri) => {
+              const ivs = intervalsByCell[ri];
+              return [cell.cellId, ...colHeaders.map((_, ci) => {
+                const iv = ivs[ci];
+                if (!iv || iv.days == null) return iv && iv.onTest ? "on test" : "";
+                return iv.days + (iv.projected ? "*" : "");
+              })];
+            });
+            const csv = [header, ...rows].map(r => r.map(v => /[,"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v).join(",")).join("\n");
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+            a.download = "rest_periods.csv";
+            a.click();
+          }}
+          style={{ marginLeft: "auto", padding: "4px 12px", borderRadius: 5, border: "1px solid #2a303c",
+            background: "transparent", color: "#8891a0", cursor: "pointer", fontSize: 11,
+            fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
+          ↓ Export CSV
+        </button>
+      </div>
+
+      {/* ── Legend ── */}
+      <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 10, color: "#64748b", flexWrap: "wrap" }}>
+        <span><span style={{ color: "#34d399" }}>■</span> On schedule ({restDays}d)</span>
+        <span><span style={{ color: "#a78bfa" }}>■</span> ±1–3d</span>
+        <span><span style={{ color: "#fbbf24" }}>■</span> ±4–7d</span>
+        <span><span style={{ color: "#f87171" }}>■</span> &gt;7d off</span>
+        <span><span style={{ color: "#64748b", fontStyle: "italic" }}>■</span> Projected</span>
+        <span><span style={{ color: "#4e9af5", fontStyle: "italic" }}>■</span> On test</span>
+      </div>
+
+      {/* ── Table ── */}
+      {visibleCells.length === 0
+        ? <div style={{ fontSize: 12, color: "#3a4250", fontStyle: "italic" }}>No cells match. Archived cells appear when you search by ID or filter by project.</div>
+        : (
+          <div className="rpt-scroll" style={{ overflowX: "auto" }}>
+            <table style={{ borderCollapse: "collapse", fontSize: 11, fontFamily: "'JetBrains Mono', monospace", minWidth: "max-content" }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: "6px 14px 6px 0", textAlign: "left", color: "#64748b", fontWeight: 600,
+                    borderBottom: "1px solid #2a303c", fontSize: 10, letterSpacing: "0.5px", textTransform: "uppercase",
+                    position: "sticky", left: 0, background: "#0c0f14", whiteSpace: "nowrap", paddingRight: 24 }}>
+                    Device ID
+                  </th>
+                  {colHeaders.map((h, i) => (
+                    <th key={i} style={{ padding: "6px 10px", textAlign: "center", color: "#64748b", fontWeight: 500,
+                      borderBottom: "1px solid #2a303c", fontSize: 10, whiteSpace: "nowrap", minWidth: 80 }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleCells.map((cell, ri) => {
+                  const ivs = intervalsByCell[ri];
+                  const isArchived = cell.archived;
+                  return (
+                    <tr key={cell.cellId} style={{ opacity: isArchived ? 0.6 : 1 }}>
+                      <td style={{ padding: "5px 24px 5px 0", color: isArchived ? "#8891a0" : "#e2e6ed",
+                        borderBottom: "1px solid #1a1f27", whiteSpace: "nowrap",
+                        position: "sticky", left: 0, background: "#0c0f14" }}>
+                        {cell.cellId}
+                        {isArchived && <span style={{ marginLeft: 8, fontSize: 9, color: "#fbbf24", border: "1px solid rgba(251,191,36,0.4)", borderRadius: 3, padding: "1px 4px" }}>archived</span>}
+                      </td>
+                      {colHeaders.map((_, ci) => {
+                        const iv = ivs[ci];
+                        if (!iv) return (
+                          <td key={ci} style={{ padding: "5px 10px", textAlign: "center", borderBottom: "1px solid #1a1f27", color: "#2a303c" }}>—</td>
+                        );
+                        const st = cellStyle(iv);
+                        return (
+                          <td key={ci} style={{ padding: "5px 10px", textAlign: "center", borderBottom: "1px solid #1a1f27", ...st }}>
+                            {iv.onTest ? "on test" : iv.days != null ? iv.days + "d" + (iv.projected ? "*" : "") : "—"}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {visibleCells.some(c => intervalsByCell[visibleCells.indexOf(c)].some(iv => iv && iv.projected)) && (
+              <div style={{ marginTop: 8, fontSize: 10, color: "#64748b", fontFamily: "'JetBrains Mono', monospace" }}>* projected ({restDays}d rest period)</div>
+            )}
+          </div>
+        )
+      }
     </div>
   );
 }
@@ -3768,6 +3970,28 @@ function CellDrawer({ data, cellId, persist, onClose, onArchive, onUnarchive }) 
     setEditReturn(null);
   };
 
+  const deleteEvent = async (evIdx) => {
+    if (!persist) return;
+    const h = history.find(h => h.n - 1 === evIdx);
+    const label = h ? `RPT #${h.n}` : `event ${evIdx + 1}`;
+    if (!window.confirm(`Delete ${label}${h && h.start ? " (started " + fmtDate(h.start) + ")" : ""}?\n\nThis permanently removes the run from the history.`)) return;
+    const nd = JSON.parse(JSON.stringify(data));
+    if (rpt) {
+      const cell = nd.rptCells[profile.rptIdx];
+      if (!cell) return;
+      cell.events.splice(evIdx, 1);
+      // Recalculate nextRptStart from the new last event
+      const last = cell.events[cell.events.length - 1];
+      cell.nextRptStart = (last && last.returned) ? addDays(last.returned, restDays) : null;
+      cell.nextRptOverride = null;
+    } else if (archived) {
+      const rec = nd.archivedCells && nd.archivedCells[cellId];
+      if (!rec) return;
+      rec.events.splice(evIdx, 1);
+    } else return;
+    await persist(nd);
+  };
+
   const upcoming = [];
   if (rpt && rpt.nextRptStart) { let d = rpt.nextRptStart; for (let i = 0; i < 4; i++) { upcoming.push(d); d = addDays(d, RPT_PERIOD_DAYS); } }
 
@@ -3873,6 +4097,11 @@ function CellDrawer({ data, cellId, persist, onClose, onArchive, onUnarchive }) 
             {history.map((h, i) => {
               const testDays = (h.start && h.offTest) ? daysBetween(h.start, h.offTest) : null;
               const nextStart = h.returned ? addDays(h.returned, restDays) : null;
+              // days in storage = returned → next cycle's actual start (or projected nextStart for most recent)
+              const nextCycleStart = i > 0 ? history[i - 1].start : null;
+              const storageEnd = nextCycleStart || nextStart;
+              const daysInStorage = (h.returned && storageEnd) ? daysBetween(h.returned, storageEnd) : null;
+              const storageProjected = !nextCycleStart && !!nextStart;
               const openColor = testing ? "#4e9af5" : "#fbbf24";
               return (
                 <div key={i} style={{ padding: "7px 0", borderBottom: "1px solid #1a1f27", fontSize: 10.5, fontFamily: "'JetBrains Mono', monospace" }}>
@@ -3880,6 +4109,8 @@ function CellDrawer({ data, cellId, persist, onClose, onArchive, onUnarchive }) 
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
                     <span style={{ color: "#64748b", fontWeight: 600 }}>#{h.n}</span>
                     <span><span style={{ color: "#3a4250" }}>start </span><span style={{ color: "#e2e6ed" }}>{fmtDateTime(h.startTs || h.start)}</span></span>
+                    {persist && <button onClick={() => deleteEvent(h.n - 1)} title="Delete this RPT event"
+                      style={{ ...btnSmall, marginLeft: "auto", padding: "1px 5px", color: "#3a4250", borderColor: "#2a303c", fontSize: 9 }}>✕ delete</button>}
                     <span style={{ color: "#3a4250" }}>→</span>
                     <span><span style={{ color: "#3a4250" }}>off-test </span><span style={{ color: "#a78bfa" }}>{h.offTest ? fmtDate(h.offTest) : "—"}</span></span>
                     {testDays != null && <span style={{ color: "#3a4250" }}>({testDays}d run)</span>}
@@ -3914,6 +4145,7 @@ function CellDrawer({ data, cellId, persist, onClose, onArchive, onUnarchive }) 
                                   style={{ color: "#34d399", cursor: "pointer", borderBottom: "1px dashed rgba(52,211,153,0.5)" }}>{fmtDate(h.returned)} ✎</span>
                               : <span style={{ color: "#34d399" }}>{fmtDate(h.returned)}</span>}
                             {nextStart && <><span style={{ color: "#3a4250" }}>→ next RPT </span><span style={{ color: "#8891a0" }}>{fmtDate(nextStart)}</span></>}
+                            {daysInStorage != null && <span style={{ color: storageProjected ? "#64748b" : "#3a4250" }}>({daysInStorage}d storage{storageProjected ? " projected" : ""})</span>}
                           </>
                     }
                   </div>
