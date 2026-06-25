@@ -96,6 +96,7 @@ const CheckCircle2 = makeIconComponent(_l.CheckCircle2);
 const Clock = makeIconComponent(_l.Clock);
 const Plus = makeIconComponent(_l.Plus);
 const X = makeIconComponent(_l.X);
+const Pencil = makeIconComponent(_l.Pencil);
 const Download = makeIconComponent(_l.Download);
 const Upload = makeIconComponent(_l.Upload);
 const ChevronRight = makeIconComponent(_l.ChevronRight);
@@ -762,6 +763,19 @@ function LabMaintenanceDashboard() {
     }));
   };
 
+  const updateEntry = (catKey, boxKey, attrKey, id, entry) => {
+    setData(prev => ({
+      ...prev,
+      [catKey]: {
+        ...prev[catKey],
+        [boxKey]: {
+          ...prev[catKey][boxKey],
+          [attrKey]: prev[catKey][boxKey][attrKey].map(e => e.id === id ? { id, ...entry } : e),
+        },
+      },
+    }));
+  };
+
   const deleteEntry = (catKey, boxKey, attrKey, id) => {
     setData(prev => ({
       ...prev,
@@ -876,6 +890,7 @@ function LabMaintenanceDashboard() {
               data={data[activeCategory]?.[activeBox] || {}}
               intervals={intervals}
               onLog={(attrKey) => setModalConfig({ catKey: activeCategory, boxKey: activeBox, attrKey })}
+              onEdit={(attrKey, existingEntry) => setModalConfig({ catKey: activeCategory, boxKey: activeBox, attrKey, existingEntry })}
               onDelete={(attrKey, id) => deleteEntry(activeCategory, activeBox, attrKey, id)}
             />
           )}
@@ -892,6 +907,7 @@ function LabMaintenanceDashboard() {
               data={data}
               intervals={intervals}
               onLog={(catKey, boxKey, attrKey) => setModalConfig({ catKey, boxKey, attrKey })}
+              onEdit={(catKey, boxKey, attrKey, existingEntry) => setModalConfig({ catKey, boxKey, attrKey, existingEntry })}
               onDelete={(catKey, boxKey, attrKey, id) => deleteEntry(catKey, boxKey, attrKey, id)}
             />
           )}
@@ -902,8 +918,13 @@ function LabMaintenanceDashboard() {
         <EntryModal
           attribute={CATEGORIES[modalConfig.catKey].boxes[modalConfig.boxKey].attributes[modalConfig.attrKey]}
           boxName={CATEGORIES[modalConfig.catKey].boxes[modalConfig.boxKey].name}
+          existingEntry={modalConfig.existingEntry || null}
           onSave={(entry) => {
-            addEntry(modalConfig.catKey, modalConfig.boxKey, modalConfig.attrKey, entry);
+            if (modalConfig.existingEntry) {
+              updateEntry(modalConfig.catKey, modalConfig.boxKey, modalConfig.attrKey, modalConfig.existingEntry.id, entry);
+            } else {
+              addEntry(modalConfig.catKey, modalConfig.boxKey, modalConfig.attrKey, entry);
+            }
             setModalConfig(null);
           }}
           onClose={() => setModalConfig(null)}
@@ -1238,7 +1259,7 @@ function StatCard({ label, value, color, icon: Icon }) {
   );
 }
 
-function BoxView({ category, boxKey, box, accent, data, intervals, onLog, onDelete }) {
+function BoxView({ category, boxKey, box, accent, data, intervals, onLog, onEdit, onDelete }) {
   if (!box) return null;
   const argonAttrs = Object.entries(box.attributes).filter(([, a]) => a.type === 'argon');
   const attrCount = Object.keys(box.attributes).length;
@@ -1311,7 +1332,10 @@ function BoxView({ category, boxKey, box, accent, data, intervals, onLog, onDele
                       <tr key={e.id}>
                         {taskType.fields.map(f => <td key={f}>{e[f] ?? ''}</td>)}
                         <td>
-                          <button className="del-btn" onClick={() => onDelete(aKey, e.id)}><X size={12} /></button>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button className="edit-btn" onClick={() => onEdit(aKey, e)}><Pencil size={12} /></button>
+                            <button className="del-btn" onClick={() => onDelete(aKey, e.id)}><X size={12} /></button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1501,7 +1525,7 @@ function TaskOverview({ data, intervals, onSelectTask }) {
   );
 }
 
-function TaskView({ taskType, data, intervals, onLog, onDelete }) {
+function TaskView({ taskType, data, intervals, onLog, onEdit, onDelete }) {
   const t = TASK_TYPES[taskType];
   const instances = gatherTaskInstances(taskType, data);
   const interval = intervals[taskType];
@@ -1565,7 +1589,10 @@ function TaskView({ taskType, data, intervals, onLog, onDelete }) {
                       <tr key={e.id}>
                         {t.fields.map(f => <td key={f}>{e[f] ?? ''}</td>)}
                         <td>
-                          <button className="del-btn" onClick={() => onDelete(inst.catKey, inst.boxKey, inst.attrKey, e.id)}><X size={12} /></button>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button className="edit-btn" onClick={() => onEdit(inst.catKey, inst.boxKey, inst.attrKey, e)}><Pencil size={12} /></button>
+                            <button className="del-btn" onClick={() => onDelete(inst.catKey, inst.boxKey, inst.attrKey, e.id)}><X size={12} /></button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1644,11 +1671,24 @@ function ArgonTrendChart({ entries, boxName, accent }) {
   );
 }
 
-function EntryModal({ attribute, boxName, onSave, onClose }) {
+function EntryModal({ attribute, boxName, existingEntry, onSave, onClose }) {
   const taskType = TASK_TYPES[attribute.type];
+  const nowTime = () => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  };
   const [form, setForm] = useState(() => {
+    if (existingEntry) {
+      const init = {};
+      taskType.fields.forEach(f => init[f] = existingEntry[f] ?? '');
+      return init;
+    }
     const init = {};
-    taskType.fields.forEach(f => init[f] = f === 'date' ? today() : '');
+    taskType.fields.forEach(f => {
+      if (f === 'date') init[f] = today();
+      else if (f === 'time') init[f] = nowTime();
+      else init[f] = '';
+    });
     return init;
   });
 
@@ -1669,7 +1709,7 @@ function EntryModal({ attribute, boxName, onSave, onClose }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-head">
           <div>
-            <div className="modal-title">LOG ENTRY</div>
+            <div className="modal-title">{existingEntry ? 'EDIT ENTRY' : 'LOG ENTRY'}</div>
             <div className="modal-sub">{boxName} → {attribute.label || taskType.label}</div>
           </div>
           <button className="icon-btn" onClick={onClose}><X size={14} /></button>
@@ -1893,6 +1933,8 @@ const styles = `
   .log-table .empty { color: #5a6470; font-style: italic; text-align: center; padding: 20px; }
   .del-btn { background: transparent; border: 1px solid #2a3340; color: #6b7480; padding: 3px; cursor: pointer; transition: all 0.15s; }
   .del-btn:hover { border-color: #c4524b; color: #c4524b; }
+  .edit-btn { background: transparent; border: 1px solid #2a3340; color: #6b7480; padding: 3px; cursor: pointer; transition: all 0.15s; }
+  .edit-btn:hover { border-color: #7a9ac4; color: #7a9ac4; }
   .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
   .modal { background: #11151c; border: 1px solid #2a3340; min-width: 420px; max-width: 540px; max-height: 90vh; overflow-y: auto; }
   .modal-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 14px 18px; border-bottom: 1px solid #1e242d; gap: 12px; }
