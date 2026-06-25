@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab Maintenance Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: #0e1116; }
+    #root { min-height: 100vh; }
+    .loading {
+      display: flex; align-items: center; justify-content: center;
+      height: 100vh; color: #8a929d; font-family: 'Inter', sans-serif;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"><div class="loading">Loading dashboard...</div></div>
+
+  <!-- React 18 -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <!-- Plotly -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <!-- Lucide icons (vanilla) -->
+  <script src="https://unpkg.com/lucide@0.378.0/dist/umd/lucide.min.js"></script>
+
+  <!-- Babel for in-browser JSX -->
+  <script src="https://unpkg.com/@babel/standalone@7.25.0/babel.min.js"></script>
+
+  <script type="text/babel" data-presets="react">
+
+const { useState, useMemo, useEffect } = React;
+
+
+// localStorage-based storage shim (replaces window.storage from Claude artifacts)
+const localStorageShim = {
+  async get(key) {
+    const value = localStorage.getItem(key);
+    if (value === null) throw new Error('Key not found');
+    return { key, value, shared: false };
+  },
+  async set(key, value) {
+    localStorage.setItem(key, value);
+    return { key, value, shared: false };
+  },
+  async delete(key) {
+    localStorage.removeItem(key);
+    return { key, deleted: true, shared: false };
+  },
+};
+
+
+// Lucide icon wrappers — convert vanilla lucide icon arrays into React components.
+// Each icon in window.lucide is [svgTag, svgAttrs, children] where children is
+// an array of [tagName, attrs] pairs.
+function makeIconComponent(iconArray) {
+  // iconArray = ["svg", svgAttrs, [["path", {...}], ...]]
+  const children = iconArray && iconArray[2] ? iconArray[2] : [];
+  return function LucideIcon({ size = 16, color = 'currentColor', strokeWidth = 2, style = {}, className = '', ...rest }) {
+    return React.createElement('svg', {
+      xmlns: 'http://www.w3.org/2000/svg',
+      width: size, height: size,
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: color,
+      strokeWidth,
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
+      style, className,
+      ...rest,
+    }, children.map(([tag, attrs], i) => {
+      // Convert kebab-case attrs to camelCase for React
+      const reactAttrs = { key: i };
+      for (const [k, v] of Object.entries(attrs || {})) {
+        if (k === 'stroke-width') reactAttrs.strokeWidth = v;
+        else if (k === 'stroke-linecap') reactAttrs.strokeLinecap = v;
+        else if (k === 'stroke-linejoin') reactAttrs.strokeLinejoin = v;
+        else if (k === 'fill-rule') reactAttrs.fillRule = v;
+        else if (k === 'clip-rule') reactAttrs.clipRule = v;
+        else reactAttrs[k] = v;
+      }
+      return React.createElement(tag, reactAttrs);
+    }));
+  };
+}
+
+const _l = window.lucide;
+const AlertTriangle = makeIconComponent(_l.AlertTriangle);
+const CheckCircle2 = makeIconComponent(_l.CheckCircle2);
+const Clock = makeIconComponent(_l.Clock);
+const Plus = makeIconComponent(_l.Plus);
+const X = makeIconComponent(_l.X);
+const Download = makeIconComponent(_l.Download);
+const Upload = makeIconComponent(_l.Upload);
+const ChevronRight = makeIconComponent(_l.ChevronRight);
+const Activity = makeIconComponent(_l.Activity);
+const Wind = makeIconComponent(_l.Wind);
+const Settings = makeIconComponent(_l.Settings);
+const Box = makeIconComponent(_l.Box);
+const Flame = makeIconComponent(_l.Flame);
+const Wrench = makeIconComponent(_l.Wrench);
+const Gauge = makeIconComponent(_l.Gauge);
+const Hammer = makeIconComponent(_l.Hammer);
+const Battery = makeIconComponent(_l.Battery);
+
+
+
+// ============================================================
+// SCHEMA — Boxes are the entities; maintenance tasks are
+// attributes of each box. Add/edit boxes here.
+// ============================================================
+const TASK_TYPES = {
+  argon: { label: 'Argon Cylinder', fields: ['date', 'time', 'startPSI', 'remainPSI', 'notes'] },
+  regen: { label: 'Regeneration', fields: ['date', 'notes'] },
+  water_sensor: { label: 'Water Sensor Cleaning', fields: ['date', 'notes'] },
+  pump_oil: { label: 'Pump Oil Change', fields: ['date', 'notes'] },
+  oil_fill: { label: 'Pump Oil Fill Up', fields: ['date', 'notes'] },
+  solvent_trap: { label: 'Empty Solvent Trap', fields: ['date', 'notes'] },
+  pump_maintenance: { label: 'Vacuum Pump Maintenance', fields: ['date', 'notes'] },
+  chiller: { label: 'Chiller Maintenance', fields: ['date', 'notes'] },
+  service: { label: 'Service', fields: ['date', 'notes'] },
+  snorkel_carbon_bed: { label: 'Replace Carbon Bed', fields: ['date', 'notes'] },
+  calender_maintenance: { label: 'Calender Maintenance', fields: ['date', 'notes'] },
+  general: { label: 'General Maintenance', fields: ['date', 'notes'] },
+  other_maintenance: { label: 'Other Glovebox Maintenance', fields: ['date', 'notes'] },
+};
+
+const DEFAULT_INTERVALS = {
+  argon: null,
+  regen: null,
+  water_sensor: 83,
+  pump_oil: 183,
+  oil_fill: null,
+  solvent_trap: null,
+  pump_maintenance: null,
+  chiller: 183,
+  service: null,
+  snorkel_carbon_bed: null,
+  calender_maintenance: null,
+  general: null,
+  other_maintenance: null
+};
+
+const CATEGORIES = {
+  glovebox: {
+    name: 'Gloveboxes',
+    icon: Wind,
+    accent: '#d4a574',
+    boxes: {
+      powder: {
+        name: 'Powder GB',
+        attributes: {
+          argon: { type: 'argon' },
+          regen: { type: 'regen' },
+          water_sensor: { type: 'water_sensor' },
+          pump_oil_antechamber: { type: 'pump_oil', label: 'Pump Oil — Antechamber', pump: 'Antechamber', brand: 'Edwards' },
+          oil_fill_antechamber: { type: 'oil_fill', label: 'Oil Fill Up — Antechamber', pump: 'Antechamber', brand: 'Edwards' },
+          other_maintenance: { type: 'other_maintenance' },
+        },
+      },
+      fill: {
+        name: 'Fill GB',
+        attributes: {
+          argon: { type: 'argon' },
+          regen: { type: 'regen' },
+          water_sensor: { type: 'water_sensor' },
+          chiller: { type: 'chiller' },
+          carbon_bed: { type: 'snorkel_carbon_bed', label: 'Replace Carbon Bed' },
+          pump_oil_antechamber: { type: 'pump_oil', label: 'Pump Oil — Antechamber', pump: 'Antechamber', brand: 'Edwards' },
+          oil_fill_antechamber: { type: 'oil_fill', label: 'Oil Fill Up — Antechamber', pump: 'Antechamber', brand: 'Edwards' },
+          pump_oil_oven: { type: 'pump_oil', label: 'Pump Oil — Oven', pump: 'Oven', brand: 'Edwards' },
+          oil_fill_oven: { type: 'oil_fill', label: 'Oil Fill Up — Oven', pump: 'Oven', brand: 'Edwards' },
+          other_maintenance: { type: 'other_maintenance' },
+        },
+      },
+      coincell: {
+        name: 'Coin Cell GB',
+        attributes: {
+          argon: { type: 'argon' },
+          regen: { type: 'regen' },
+          water_sensor: { type: 'water_sensor' },
+          chiller: { type: 'chiller' },
+          carbon_bed: { type: 'snorkel_carbon_bed', label: 'Replace Carbon Bed' },
+          pump_oil_antechamber: { type: 'pump_oil', label: 'Pump Oil — Antechamber', pump: 'Antechamber', brand: 'Edwards' },
+          oil_fill_antechamber: { type: 'oil_fill', label: 'Oil Fill Up — Antechamber', pump: 'Antechamber', brand: 'Edwards' },
+          pump_oil_oven: { type: 'pump_oil', label: 'Pump Oil — Oven', pump: 'Oven', brand: 'Edwards' },
+          oil_fill_oven: { type: 'oil_fill', label: 'Oil Fill Up — Oven', pump: 'Oven', brand: 'Edwards' },
+          other_maintenance: { type: 'other_maintenance' },
+        },
+      },
+    },
+  },
+  drying: {
+    name: 'Drying Ovens/Chambers',
+    icon: Flame,
+    accent: '#c47a52',
+    boxes: {
+      small_cathode: {
+        name: 'Small Cathode Ovens',
+        attributes: {
+          pump_oil: { type: 'pump_oil', label: 'Pump Oil Change', brand: 'Across International' },
+          oil_fill: { type: 'oil_fill', label: 'Oil Fill Up', brand: 'Across International' },
+          solvent_trap: { type: 'solvent_trap' },
+        },
+      },
+      anode_amber: {
+        name: 'Amber Anode Vacuum Chambers',
+        attributes: {
+          pump_maintenance: { type: 'pump_maintenance', label: 'Vacuum Pump Maintenance', brand: 'unspecified — TBD (oilless?)' },
+        },
+      },
+      drying_80c: {
+        name: '80°C Drying Chamber',
+        attributes: {},
+      },
+      large_cathode: {
+        name: 'Large Cathode Oven',
+        attributes: {
+          pump_oil: { type: 'pump_oil', label: 'Pump Oil Change', brand: 'Across International' },
+          oil_fill: { type: 'oil_fill', label: 'Oil Fill Up', brand: 'Across International' },
+          solvent_trap: { type: 'solvent_trap' },
+        },
+      },
+    },
+  },
+  battery_testing: {
+    name: 'Battery Testing Chambers',
+    icon: Battery,
+    accent: '#85b89a',
+    boxes: {
+      chamber_1: { name: 'Chamber 1', attributes: { general: { type: 'general', label: 'Maintenance Log' } } },
+      chamber_2: { name: 'Chamber 2', attributes: { general: { type: 'general', label: 'Maintenance Log' } } },
+      chamber_3: { name: 'Chamber 3', attributes: { general: { type: 'general', label: 'Maintenance Log' } } },
+      chamber_4: { name: 'Chamber 4', attributes: { general: { type: 'general', label: 'Maintenance Log' } } },
+      chamber_5: { name: 'Chamber 5', attributes: { general: { type: 'general', label: 'Maintenance Log' } } },
+      chamber_6: { name: 'Chamber 6', attributes: { general: { type: 'general', label: 'Maintenance Log' } } },
+      chamber_7: { name: 'Chamber 7', attributes: { general: { type: 'general', label: 'Maintenance Log' } } },
+      chamber_8: { name: 'Chamber 8', attributes: { general: { type: 'general', label: 'Maintenance Log' } } },
+      chamber_9: { name: 'Chamber 9', attributes: { general: { type: 'general', label: 'Maintenance Log' } } },
+      coincell_chamber_1: { name: 'Coincell Chamber 1', attributes: { general: { type: 'general', label: 'Maintenance Log' } } },
+      coincell_chamber_2: { name: 'Coincell Chamber 2', attributes: { general: { type: 'general', label: 'Maintenance Log' } } },
+      biologic_chamber: { name: 'Biologic Chamber', attributes: { general: { type: 'general', label: 'Maintenance Log' } } },
+    },
+  },
+  other: {
+    name: 'Other Units',
+    icon: Wrench,
+    accent: '#7a9ac4',
+    boxes: {
+      rheometer: {
+        name: 'Rheometer',
+        attributes: {
+          service: { type: 'service', label: 'Service Rheometer' },
+        },
+      },
+      flacktek: {
+        name: 'FlackTeks',
+        attributes: {
+          service_large: { type: 'service', label: 'Service Large FlackTek' },
+          service_small: { type: 'service', label: 'Service Small FlackTek' },
+        },
+      },
+      snorkels: {
+        name: 'Snorkels',
+        attributes: {
+          carbon_bed_1: { type: 'snorkel_carbon_bed', label: 'Replace Carbon Bed — Snorkel 1' },
+          carbon_bed_2: { type: 'snorkel_carbon_bed', label: 'Replace Carbon Bed — Snorkel 2' },
+        },
+      },
+      anode_fume_hood: {
+        name: 'Anode Fume Hood',
+        attributes: {
+          carbon_bed: { type: 'snorkel_carbon_bed', label: 'Replace Carbon Bed' },
+        },
+      },
+      calender: {
+        name: 'Calender',
+        attributes: {
+          calender_maintenance: { type: 'calender_maintenance', label: 'Calender Maintenance' },
+        },
+      },
+    },
+  },
+  general: {
+    name: 'General Maintenance',
+    icon: Hammer,
+    accent: '#6b9a85',
+    boxes: {
+      lab: {
+        name: 'Lab-Wide',
+        attributes: {
+          general: { type: 'general', label: 'Maintenance Log' },
+        },
+      },
+    },
+  },
+  vacuum_pumps: {
+    name: 'Vacuum Pumps',
+    icon: Gauge,
+    accent: '#9a85b8',
+    virtual: true,
+    // Pumps are derived from pump_oil and pump_maintenance attributes
+    // across all other categories. Defined at render time.
+  },
+  // ============================================================
+  // EXTENSION: add more equipment categories here. Each item
+  // (furnace, hood, mill, etc) becomes a "box" with its own
+  // attributes. Same UI works for them automatically.
+  // ============================================================
+};
+
+// ============================================================
+// VIRTUAL CATEGORY DERIVATION — collect every pump-related
+// attribute across the real categories. Each pump becomes a
+// "box" in the virtual category, with parentCat/parentBox
+// backlinks for navigation back to where it actually lives.
+// ============================================================
+const PUMP_TASK_TYPES = ['pump_oil', 'oil_fill', 'pump_maintenance'];
+
+function deriveVacuumPumps() {
+  // Group attributes by physical pump. Two attributes belong to the same pump
+  // when they share parent (cat + box) AND the same pump role (Antechamber, Oven, etc.)
+  // or the same singleton key (e.g. small_cathode's lone pump).
+  const pumps = {};
+  Object.entries(CATEGORIES).forEach(([catKey, cat]) => {
+    if (cat.virtual) return;
+    Object.entries(cat.boxes).forEach(([boxKey, box]) => {
+      Object.entries(box.attributes).forEach(([attrKey, attr]) => {
+        if (!PUMP_TASK_TYPES.includes(attr.type)) return;
+        // Determine which physical pump this attribute belongs to.
+        // For glovebox-style: attr.pump is set (e.g. "Antechamber"). For cathode ovens,
+        // there's only one pump per box so we treat the box itself as the pump.
+        const pumpRole = attr.pump || '';
+        const pumpKey = pumpRole
+          ? `${catKey}__${boxKey}__${pumpRole.toLowerCase()}`
+          : `${catKey}__${boxKey}__main`;
+
+        if (!pumps[pumpKey]) {
+          const name = pumpRole && pumpRole !== box.name
+            ? `${box.name} · ${pumpRole}`
+            : box.name;
+          pumps[pumpKey] = {
+            name,
+            parentCat: catKey,
+            parentBox: boxKey,
+            parentBoxName: box.name,
+            parentCatName: cat.name,
+            brand: attr.brand,
+            attributes: {},
+            attrKeys: [],
+          };
+        }
+        // Add this attribute under the pump
+        pumps[pumpKey].attributes[attrKey] = attr;
+        pumps[pumpKey].attrKeys.push(attrKey);
+        // Prefer non-empty brand value
+        if (attr.brand && !pumps[pumpKey].brand) pumps[pumpKey].brand = attr.brand;
+      });
+    });
+  });
+  return pumps;
+}
+
+// ============================================================
+// SEED DATA — keyed by [category][box][attribute]
+// ============================================================
+const SEED_DATA = {
+  glovebox: {
+    powder: {
+      argon: [
+        {
+          id: "p1",
+          date: "2025-08-28",
+          time: "AM",
+          startPSI: null,
+          remainPSI: null,
+          notes: ""
+        },
+        {
+          id: "p2",
+          date: "2025-09-04",
+          time: "09:30",
+          startPSI: null,
+          remainPSI: null,
+          notes: ""
+        },
+        {
+          id: "p3",
+          date: "2025-10-02",
+          time: "16:00",
+          startPSI: null,
+          remainPSI: null,
+          notes: ""
+        },
+        {
+          id: "p4",
+          date: "2025-10-17",
+          time: "14:00",
+          startPSI: null,
+          remainPSI: null,
+          notes: ""
+        },
+        {
+          id: "p5",
+          date: "2025-10-28",
+          time: "14:00",
+          startPSI: null,
+          remainPSI: null,
+          notes: ""
+        },
+        {
+          id: "p6",
+          date: "2025-11-07",
+          time: "09:00",
+          startPSI: null,
+          remainPSI: null,
+          notes: ""
+        },
+        {
+          id: "p7",
+          date: "2025-11-26",
+          time: "11:00",
+          startPSI: null,
+          remainPSI: 500,
+          notes: ""
+        },
+        {
+          id: "p8",
+          date: "2025-12-08",
+          time: "16:00",
+          startPSI: null,
+          remainPSI: null,
+          notes: ""
+        },
+        {
+          id: "p9",
+          date: "2025-12-22",
+          time: "",
+          startPSI: null,
+          remainPSI: 800,
+          notes: ""
+        },
+        {
+          id: "p10",
+          date: "2025-12-31",
+          time: "",
+          startPSI: null,
+          remainPSI: 900,
+          notes: ""
+        },
+        {
+          id: "p11",
+          date: "2026-01-09",
+          time: "",
+          startPSI: 900,
+          remainPSI: null,
+          notes: ""
+        },
+        {
+          id: "p12",
+          date: "2026-01-14",
+          time: "09:00",
+          startPSI: null,
+          remainPSI: null,
+          notes: ""
+        },
+        {
+          id: "p13",
+          date: "2026-02-22",
+          time: "10:00",
+          startPSI: null,
+          remainPSI: null,
+          notes: ""
+        },
+        {
+          id: "p14",
+          date: "2026-04-23",
+          time: "19:00",
+          startPSI: null,
+          remainPSI: null,
+          notes: ""
+        },
+        {
+          id: "argon_1781129211937",
+          date: "2026-06-10",
+          time: "16:06",
+          startPSI: null,
+          remainPSI: 200,
+          notes: ""
+        }
+      ],
+      regen: [
+        {
+          id: "r1",
+          date: "2025-12-22",
+          notes: ""
+        },
+        {
+          id: "regen_1779312307353",
+          date: "2026-05-19",
+          notes: "I tried to regen it, but it turns out the flow meter is broken"
+        }
+      ],
+      water_sensor: [
+        {
+          id: "w2",
+          date: "2026-04-13",
+          notes: ""
+        }
+      ],
+      pump_oil_antechamber: [
+        {
+          id: "po_powder_baseline",
+          date: "2025-06-01",
+          notes: "Baseline estimate — no record before this date; assume not changed since June 2025"
+        },
+        {
+          id: "po_powder_20260513",
+          date: "2026-05-13",
+          notes: ""
+        }
+      ],
+      oil_fill_antechamber: [],
+      other_maintenance: [
+        {
+          id: "other_powder_20260511",
+          date: "2026-05-11",
+          notes: "fixed antechamber shelf"
+        },
+        {
+          id: "other_maintenance_1781129631902",
+          date: "2026-06-08",
+          notes: "Tried setting up regen flow meter but it didn't work\n"
+        }
+      ]
+    },
+    fill: {
+      argon: [
+        { id: "f1", date: "2025-08-18", time: "09:00", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f2", date: "2025-08-26", time: "10:00", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f3", date: "2025-09-02", time: "14:00", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f4", date: "2025-09-08", time: "10:00", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f5", date: "2025-09-15", time: "09:00", startPSI: null, remainPSI: null, notes: "GB spiked >999" },
+        { id: "f6", date: "2025-09-15", time: "16:45", startPSI: null, remainPSI: null, notes: "Purged back to low O2" },
+        { id: "f7", date: "2025-09-22", time: "10:00", startPSI: null, remainPSI: null, notes: "GB spiked >999" },
+        { id: "f8", date: "2025-09-25", time: "", startPSI: null, remainPSI: null, notes: "Mbraun guy came and found leak. ? argon cylinders used" },
+        { id: "f9", date: "2025-10-10", time: "10:00", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f10", date: "2025-10-17", time: "09:30", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f11", date: "2025-10-22", time: "10:00", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f12", date: "2025-10-30", time: "09:30", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f13", date: "2025-11-06", time: "15:30", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f14", date: "2025-11-13", time: "", startPSI: null, remainPSI: null, notes: "?" },
+        { id: "f15", date: "2025-11-20", time: "11:30", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f16", date: "2025-11-24", time: "09:00", startPSI: null, remainPSI: null, notes: "No Pressure" },
+        { id: "f17", date: "2025-12-01", time: "10:00", startPSI: null, remainPSI: null, notes: "No pressure, post thanksgiving" },
+        { id: "f18", date: "2025-12-03", time: "12:30", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f19", date: "2025-12-10", time: "10:00", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f20", date: "2025-12-22", time: "09:00", startPSI: null, remainPSI: null, notes: "No pressure" },
+        { id: "f21", date: "2025-12-23", time: "12:00", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f22", date: "2026-01-10", time: "", startPSI: null, remainPSI: null, notes: "3 or four tanks to bring it back up; probably after installation of new sealer (actual dates were Jan 9 and Jan 11)" },
+        { id: "f23", date: "2026-03-09", time: "", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f24", date: "2026-03-13", time: "", startPSI: null, remainPSI: 500, notes: "" },
+        { id: "f25", date: "2026-03-18", time: "", startPSI: 500, remainPSI: null, notes: "" },
+        { id: "f26", date: "2026-03-19", time: "", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f27", date: "2026-03-24", time: "", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f28", date: "2026-03-25", time: "", startPSI: null, remainPSI: 2000, notes: "Not sure what happened here, maybe still had 2000 left" },
+        { id: "f29", date: "2026-03-27", time: "", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f30", date: "2026-03-31", time: "", startPSI: null, remainPSI: null, notes: "" },
+        { id: "f31", date: "2026-04-06", time: "", startPSI: null, remainPSI: null, notes: "box spiked. It turns out there was a hole in the glove." },
+        { id: "argon_1779129904594", date: "2026-05-18", time: "12:44", startPSI: null, remainPSI: null, notes: "I kind of spiked the gb when i was getting ready to fill cells" },
+        { id: "argon_1781297816995", date: "2026-06-12", time: "15:09", startPSI: null, remainPSI: null, notes: "" }
+      ],
+      regen: [
+        { id: "r2", date: "2025-10-15", notes: "" },
+        { id: "r3", date: "2026-04-23", notes: "" }
+      ],
+      water_sensor: [
+        { id: "w1", date: "2026-04-13", notes: "" }
+      ],
+      chiller: [
+        { id: "chiller_1777592937190", date: "2026-04-30", notes: "Put water/glycol into the coil condenser instead of water" },
+        { id: "chiller_1779313118025", date: "2026-05-20", notes: "It said the glycol level was too low in the big chiller so i put more in" }
+      ],
+      carbon_bed: [],
+      pump_oil_antechamber: [
+        { id: "po1", date: "2026-03-24", notes: "" }
+      ],
+      oil_fill_antechamber: [],
+      pump_oil_oven: [
+        { id: "po_fill_oven_baseline", date: "2025-06-01", notes: "Baseline estimate — no record before this date; assume not changed since June 2025" }
+      ],
+      oil_fill_oven: [],
+      other_maintenance: []
+    },
+    coincell: {
+      argon: [
+        { id: "argon_1777592843694", date: "2026-04-30", time: "17:00", startPSI: null, remainPSI: null, notes: "First time adding an entry by hand to this thing" },
+        { id: "argon_coin_20260504", date: "2026-05-04", time: "", startPSI: null, remainPSI: null, notes: "spiked the box with antechambers twice so we had to purge a lot" },
+        { id: "argon_1781536266477", date: "2026-06-12", time: "18:00", startPSI: null, remainPSI: null, notes: "" }
+      ],
+      regen: [
+        { id: "regen_coin_20260506", date: "2026-05-06", notes: "" }
+      ],
+      water_sensor: [
+        { id: "w3", date: "2026-04-13", notes: "" }
+      ],
+      chiller: [
+        { id: "chiller_coin_20260424", date: "2026-04-24", notes: "new fuse" }
+      ],
+      carbon_bed: [],
+      pump_oil_antechamber: [
+        { id: "po_coin_ante_baseline", date: "2025-06-01", notes: "Baseline estimate — no record before this date; assume not changed since June 2025" }
+      ],
+      oil_fill_antechamber: [],
+      pump_oil_oven: [
+        { id: "po_coin_oven_baseline", date: "2025-06-01", notes: "Baseline estimate — no record before this date; assume not changed since June 2025" }
+      ],
+      oil_fill_oven: [],
+      other_maintenance: []
+    }
+  },
+  drying: {
+    small_cathode: {
+      pump_oil: [],
+      oil_fill: [
+        { id: "oil_fill_small_cathode_20260512", date: "2026-05-12", notes: "" }
+      ],
+      solvent_trap: []
+    },
+    anode_amber: {
+      pump_maintenance: []
+    },
+    drying_80c: {},
+    large_cathode: {
+      pump_oil: [],
+      oil_fill: [],
+      solvent_trap: []
+    }
+  },
+  battery_testing: {
+    chamber_1: { general: [{ id: "bt_ch1_20260512", date: "2026-05-12", notes: "Melt Ice" }] },
+    chamber_2: { general: [] },
+    chamber_3: { general: [{ id: "bt_ch3_20260512", date: "2026-05-12", notes: "Power off and back on to get rid of alarm" }] },
+    chamber_4: { general: [] },
+    chamber_5: { general: [] },
+    chamber_6: { general: [] },
+    chamber_7: { general: [] },
+    chamber_8: { general: [] },
+    chamber_9: { general: [] },
+    coincell_chamber_1: { general: [] },
+    coincell_chamber_2: { general: [] },
+    biologic_chamber: { general: [] }
+  },
+  other: {
+    rheometer: { service: [] },
+    flacktek: { service_large: [], service_small: [] },
+    snorkels: { carbon_bed_1: [], carbon_bed_2: [] },
+    anode_fume_hood: { carbon_bed: [] },
+    calender: {
+      calender_maintenance: [
+        { id: "calender_20260505", date: "2026-05-05", notes: "Justin applied high pressure and temperature grease" }
+      ]
+    }
+  },
+  general: {
+    lab: {
+      general: [
+        { id: "general_20260511_a", date: "2026-05-11", notes: "Ceiling leak near powder box fixed by repair person" },
+        { id: "general_20260511_b", date: "2026-05-11", notes: "Replaced batteries on two lab clocks" },
+        { id: "general_1779127640518", date: "2026-05-18", notes: "Practice entry 2" }
+      ]
+    }
+  }
+};
+
+const today = () => new Date().toISOString().slice(0, 10);
+const daysBetween = (d1, d2) => Math.floor((new Date(d2).getTime() - new Date(d1).getTime()) / 86400000);
+
+const getStatus = (lastDate, intervalDays) => {
+  if (!lastDate) return { code: 'none', label: 'No record', color: '#6b6b6b' };
+  if (!intervalDays) return { code: 'tracked', label: 'Tracked', color: '#7a8a9a' };
+  const days = daysBetween(lastDate, today());
+  const remaining = intervalDays - days;
+  if (remaining < 0) return { code: 'overdue', label: `${-remaining}d overdue`, color: '#c4524b' };
+  if (remaining <= intervalDays * 0.15) return { code: 'due_soon', label: `Due in ${remaining}d`, color: '#d4a574' };
+  return { code: 'ok', label: `${remaining}d remaining`, color: '#6a9a6a' };
+};
+
+const STORAGE_KEY = 'lab_maintenance_data_v18';
+
+function LabMaintenanceDashboard() {
+  const [data, setData] = useState(SEED_DATA);
+  const [lens, setLens] = useState('box'); // 'box' | 'task'
+  const [activeCategory, setActiveCategory] = useState('glovebox');
+  const [activeBox, setActiveBox] = useState('powder');
+  const [activeTaskType, setActiveTaskType] = useState('argon');
+  const [activeView, setActiveView] = useState('overview');
+  const [storageReady, setStorageReady] = useState(false);
+  const [modalConfig, setModalConfig] = useState(null);
+  const [intervals, setIntervals] = useState(DEFAULT_INTERVALS);
+  const [showSettings, setShowSettings] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState(new Set());
+
+  const toggleCategory = (catKey) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(catKey)) next.delete(catKey);
+      else next.add(catKey);
+      return next;
+    });
+  };
+
+  const expandCategory = (catKey) => {
+    setExpandedCategories(prev => {
+      if (prev.has(catKey)) return prev;
+      const next = new Set(prev);
+      next.add(catKey);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const saved = await localStorageShim.get(STORAGE_KEY);
+        if (saved && saved.value) {
+          const parsed = JSON.parse(saved.value);
+          if (parsed.data) setData(parsed.data);
+          if (parsed.intervals) setIntervals(parsed.intervals);
+        }
+      } catch (e) {}
+      setStorageReady(true);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    (async () => {
+      try {
+        await localStorageShim.set(STORAGE_KEY, JSON.stringify({ data, intervals }));
+      } catch (e) {}
+    })();
+  }, [data, intervals, storageReady]);
+
+  const addEntry = (catKey, boxKey, attrKey, entry) => {
+    const id = `${attrKey}_${Date.now()}`;
+    setData(prev => ({
+      ...prev,
+      [catKey]: {
+        ...prev[catKey],
+        [boxKey]: {
+          ...prev[catKey]?.[boxKey],
+          [attrKey]: [...(prev[catKey]?.[boxKey]?.[attrKey] || []), { id, ...entry }],
+        },
+      },
+    }));
+  };
+
+  const deleteEntry = (catKey, boxKey, attrKey, id) => {
+    setData(prev => ({
+      ...prev,
+      [catKey]: {
+        ...prev[catKey],
+        [boxKey]: {
+          ...prev[catKey][boxKey],
+          [attrKey]: prev[catKey][boxKey][attrKey].filter(e => e.id !== id),
+        },
+      },
+    }));
+  };
+
+  const exportJSON = () => {
+    const blob = new Blob([JSON.stringify({ data, intervals }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lab_maintenance_${today()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importJSON = (file) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (parsed.data) setData(parsed.data);
+        if (parsed.intervals) setIntervals(parsed.intervals);
+      } catch (err) {
+        alert('Invalid JSON file');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const cat = CATEGORIES[activeCategory];
+
+  return (
+    <div style={{ fontFamily: "'Inter', system-ui, sans-serif", background: '#0e1116', color: '#dcdfe4', minHeight: '100vh' }}>
+      <style>{styles}</style>
+
+      <Header onSettings={() => setShowSettings(true)} onExport={exportJSON} onImport={importJSON} />
+
+      <GlobalAlertBar
+        data={data}
+        intervals={intervals}
+        onNavigate={(catKey, boxKey) => {
+          setLens('box');
+          setActiveCategory(catKey);
+          setActiveBox(boxKey);
+          setActiveView('box');
+          expandCategory(catKey);
+        }}
+      />
+
+      <div className="layout">
+        <Sidebar
+          lens={lens}
+          setLens={setLens}
+          activeCategory={activeCategory}
+          setActiveCategory={(k) => {
+            setActiveCategory(k);
+            const targetCat = CATEGORIES[k];
+            const boxes = targetCat.virtual ? deriveVacuumPumps() : targetCat.boxes;
+            const firstBox = Object.keys(boxes)[0];
+            setActiveBox(firstBox);
+            setActiveView('overview');
+          }}
+          activeBox={activeBox}
+          setActiveBox={(b) => { setActiveBox(b); setActiveView('box'); }}
+          activeTaskType={activeTaskType}
+          setActiveTaskType={(t) => { setActiveTaskType(t); setActiveView('task'); }}
+          activeView={activeView}
+          setActiveView={setActiveView}
+          expandedCategories={expandedCategories}
+          toggleCategory={toggleCategory}
+        />
+
+        <main className="main">
+          {lens === 'box' && activeView === 'overview' && (
+            <CategoryOverview
+              category={activeCategory}
+              cat={cat}
+              data={data[activeCategory] || {}}
+              allData={data}
+              intervals={intervals}
+              onSelectBox={(b) => { setActiveBox(b); setActiveView('box'); expandCategory(activeCategory); }}
+            />
+          )}
+          {lens === 'box' && activeView === 'box' && cat.virtual && (
+            <VirtualPumpView
+              pumpKey={activeBox}
+              accent={cat.accent}
+              allData={data}
+              intervals={intervals}
+              onJumpToParent={(parentCat, parentBox) => {
+                setActiveCategory(parentCat);
+                setActiveBox(parentBox);
+                setActiveView('box');
+                expandCategory(parentCat);
+              }}
+            />
+          )}
+          {lens === 'box' && activeView === 'box' && !cat.virtual && (
+            <BoxView
+              category={activeCategory}
+              boxKey={activeBox}
+              box={cat.boxes[activeBox]}
+              accent={cat.accent}
+              data={data[activeCategory]?.[activeBox] || {}}
+              intervals={intervals}
+              onLog={(attrKey) => setModalConfig({ catKey: activeCategory, boxKey: activeBox, attrKey })}
+              onDelete={(attrKey, id) => deleteEntry(activeCategory, activeBox, attrKey, id)}
+            />
+          )}
+          {lens === 'task' && activeView === 'overview' && (
+            <TaskOverview
+              data={data}
+              intervals={intervals}
+              onSelectTask={(t) => { setActiveTaskType(t); setActiveView('task'); }}
+            />
+          )}
+          {lens === 'task' && activeView === 'task' && (
+            <TaskView
+              taskType={activeTaskType}
+              data={data}
+              intervals={intervals}
+              onLog={(catKey, boxKey, attrKey) => setModalConfig({ catKey, boxKey, attrKey })}
+              onDelete={(catKey, boxKey, attrKey, id) => deleteEntry(catKey, boxKey, attrKey, id)}
+            />
+          )}
+        </main>
+      </div>
+
+      {modalConfig && (
+        <EntryModal
+          attribute={CATEGORIES[modalConfig.catKey].boxes[modalConfig.boxKey].attributes[modalConfig.attrKey]}
+          boxName={CATEGORIES[modalConfig.catKey].boxes[modalConfig.boxKey].name}
+          onSave={(entry) => {
+            addEntry(modalConfig.catKey, modalConfig.boxKey, modalConfig.attrKey, entry);
+            setModalConfig(null);
+          }}
+          onClose={() => setModalConfig(null)}
+        />
+      )}
+
+      {showSettings && (
+        <SettingsModal
+          intervals={intervals}
+          setIntervals={setIntervals}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function Header({ onSettings, onExport, onImport }) {
+  return (
+    <header className="header">
+      <div className="header-left">
+        <div className="logo-mark"><div className="logo-dot" /></div>
+        <div>
+          <div className="header-title">LAB MAINTENANCE</div>
+          <div className="header-sub">R&D Equipment Operations · {today()}</div>
+        </div>
+      </div>
+      <div className="header-right">
+        <button className="icon-btn" onClick={onExport}><Download size={14} /> EXPORT</button>
+        <label className="icon-btn">
+          <Upload size={14} /> IMPORT
+          <input type="file" accept="application/json" style={{ display: 'none' }}
+            onChange={e => { if (e.target.files[0]) onImport(e.target.files[0]); }} />
+        </label>
+        <button className="icon-btn" onClick={onSettings}><Settings size={14} /> SETTINGS</button>
+      </div>
+    </header>
+  );
+}
+
+function GlobalAlertBar({ data, intervals, onNavigate }) {
+  const [expanded, setExpanded] = useState(null);
+
+  const items = useMemo(() => {
+    const overdue = [];
+    const dueSoon = [];
+    Object.entries(CATEGORIES).forEach(([catKey, cat]) => {
+      if (cat.virtual) return;
+      Object.entries(cat.boxes).forEach(([boxKey, box]) => {
+        Object.entries(box.attributes).forEach(([attrKey, attr]) => {
+          const entries = data[catKey]?.[boxKey]?.[attrKey] || [];
+          const last = [...entries].sort((a, b) => b.date.localeCompare(a.date))[0];
+          const status = getStatus(last?.date, intervals[attr.type]);
+          const item = {
+            catKey, boxKey, attrKey,
+            categoryName: cat.name,
+            boxName: box.name,
+            attrLabel: attr.label || TASK_TYPES[attr.type].label,
+            brand: attr.brand,
+            lastDate: last?.date,
+            status,
+          };
+          if (status.code === 'overdue') overdue.push(item);
+          else if (status.code === 'due_soon') dueSoon.push(item);
+        });
+      });
+    });
+    overdue.sort((a, b) => {
+      const ad = parseInt(a.status.label) || 0;
+      const bd = parseInt(b.status.label) || 0;
+      return bd - ad;
+    });
+    dueSoon.sort((a, b) => {
+      const ad = parseInt(a.status.label) || 0;
+      const bd = parseInt(b.status.label) || 0;
+      return ad - bd;
+    });
+    return { overdue, dueSoon };
+  }, [data, intervals]);
+
+  const toggle = (key) => setExpanded(expanded === key ? null : key);
+
+  return (
+    <div className="alert-bar">
+      <div className="alert-bar-row">
+        <button
+          className={`alert-pill ${items.overdue.length > 0 ? 'has-items overdue' : 'empty'} ${expanded === 'overdue' ? 'open' : ''}`}
+          onClick={() => items.overdue.length > 0 && toggle('overdue')}
+          disabled={items.overdue.length === 0}
+        >
+          <AlertTriangle size={15} />
+          <span className="alert-count">{items.overdue.length}</span>
+          <span className="alert-label">Overdue</span>
+          {items.overdue.length > 0 && <ChevronRight size={14} className={`alert-chev ${expanded === 'overdue' ? 'open' : ''}`} />}
+        </button>
+
+        <button
+          className={`alert-pill ${items.dueSoon.length > 0 ? 'has-items due-soon' : 'empty'} ${expanded === 'due_soon' ? 'open' : ''}`}
+          onClick={() => items.dueSoon.length > 0 && toggle('due_soon')}
+          disabled={items.dueSoon.length === 0}
+        >
+          <Clock size={15} />
+          <span className="alert-count">{items.dueSoon.length}</span>
+          <span className="alert-label">Due Soon</span>
+          {items.dueSoon.length > 0 && <ChevronRight size={14} className={`alert-chev ${expanded === 'due_soon' ? 'open' : ''}`} />}
+        </button>
+
+        {items.overdue.length === 0 && items.dueSoon.length === 0 && (
+          <div className="alert-all-clear">
+            <CheckCircle2 size={15} />
+            <span>All maintenance on schedule</span>
+          </div>
+        )}
+      </div>
+
+      {expanded && (
+        <div className="alert-dropdown">
+          <div className="alert-dropdown-head">
+            {expanded === 'overdue' ? 'OVERDUE — most overdue first' : 'DUE SOON — closest deadline first'}
+            <span className="alert-dropdown-hint">Click any item to jump to it</span>
+          </div>
+          <div className="alert-list">
+            {(expanded === 'overdue' ? items.overdue : items.dueSoon).map(item => (
+              <button
+                key={`${item.catKey}-${item.boxKey}-${item.attrKey}`}
+                className="alert-item"
+                onClick={() => {
+                  onNavigate(item.catKey, item.boxKey);
+                  setExpanded(null);
+                }}
+              >
+                <div className="alert-item-left">
+                  <div className="alert-item-status" style={{ background: item.status.color }} />
+                  <div className="alert-item-text">
+                    <div className="alert-item-primary">
+                      {item.boxName} <span className="alert-item-sep">›</span> {item.attrLabel}
+                      {item.brand && <span className="alert-item-brand"> · {item.brand}</span>}
+                    </div>
+                    <div className="alert-item-secondary">
+                      {item.categoryName} · last: {item.lastDate || '—'}
+                    </div>
+                  </div>
+                </div>
+                <div className="alert-item-right">
+                  <span className="alert-item-status-label" style={{ color: item.status.color }}>{item.status.label}</span>
+                  <ChevronRight size={14} />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Sidebar({ lens, setLens, activeCategory, setActiveCategory, activeBox, setActiveBox, activeTaskType, setActiveTaskType, activeView, setActiveView, expandedCategories, toggleCategory }) {
+  return (
+    <aside className="sidebar">
+      <div className="lens-toggle">
+        <button
+          className={`lens-btn ${lens === 'box' ? 'active' : ''}`}
+          onClick={() => { setLens('box'); setActiveView('overview'); }}
+        >
+          By Equipment
+        </button>
+        <button
+          className={`lens-btn ${lens === 'task' ? 'active' : ''}`}
+          onClick={() => { setLens('task'); setActiveView('overview'); }}
+        >
+          By Task
+        </button>
+      </div>
+
+      {lens === 'box' && Object.entries(CATEGORIES).map(([catKey, cat]) => {
+        const Icon = cat.icon;
+        const isActiveCat = activeCategory === catKey;
+        const isExpanded = expandedCategories.has(catKey);
+        return (
+          <div key={catKey} className="sidebar-section">
+            <button
+              className={`cat-btn ${isActiveCat ? 'active' : ''}`}
+              onClick={() => {
+                toggleCategory(catKey);
+                setActiveCategory(catKey);
+                setActiveView('overview');
+              }}
+              style={{ '--accent': cat.accent }}
+            >
+              <Icon size={15} />
+              <span>{cat.name}</span>
+              <ChevronRight size={13} className={`cat-chev ${isExpanded ? 'open' : ''}`} />
+            </button>
+            {isExpanded && (
+              <div className="box-list">
+                {Object.entries(cat.virtual ? deriveVacuumPumps() : cat.boxes).map(([bKey, b]) => (
+                  <button
+                    key={bKey}
+                    className={`view-btn ${isActiveCat && activeView === 'box' && activeBox === bKey ? 'active' : ''}`}
+                    onClick={() => { setActiveCategory(catKey); setActiveBox(bKey); }}
+                  >
+                    <Box size={11} style={{ opacity: 0.6 }} />
+                    {b.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {lens === 'task' && (
+        <div className="sidebar-section">
+          <button
+            className={`cat-btn ${activeView === 'overview' ? 'active' : ''}`}
+            onClick={() => setActiveView('overview')}
+            style={{ '--accent': '#d4a574' }}
+          >
+            <Activity size={15} />
+            <span>All Tasks</span>
+          </button>
+          <div className="box-list">
+            {Object.entries(TASK_TYPES).map(([tKey, t]) => (
+              <button
+                key={tKey}
+                className={`view-btn ${activeView === 'task' && activeTaskType === tKey ? 'active' : ''}`}
+                onClick={() => setActiveTaskType(tKey)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="sidebar-section">
+        <div className="cat-btn placeholder">+ Add equipment (in code)</div>
+      </div>
+    </aside>
+  );
+}
+
+function CategoryOverview({ category, cat, data, intervals, onSelectBox, allData }) {
+  const boxes = cat.virtual ? deriveVacuumPumps() : cat.boxes;
+
+  const lookupEntries = (bKey, aKey, box) => {
+    if (cat.virtual) {
+      return allData[box.parentCat]?.[box.parentBox]?.[aKey] || [];
+    }
+    return data[bKey]?.[aKey] || [];
+  };
+
+  const allStatuses = [];
+  Object.entries(boxes).forEach(([bKey, box]) => {
+    Object.entries(box.attributes).forEach(([aKey, attr]) => {
+      const entries = lookupEntries(bKey, aKey, box);
+      const last = [...entries].sort((a, b) => b.date.localeCompare(a.date))[0];
+      const status = getStatus(last?.date, intervals[attr.type]);
+      allStatuses.push({ status });
+    });
+  });
+
+  const overdue = allStatuses.filter(s => s.status.code === 'overdue').length;
+  const dueSoon = allStatuses.filter(s => s.status.code === 'due_soon').length;
+  const ok = allStatuses.filter(s => s.status.code === 'ok').length;
+
+  return (
+    <div className="panel">
+      <PanelHeader
+        title={`${cat.name} · Overview`}
+        subtitle={cat.virtual
+          ? 'Aggregated view of pumps that live on other equipment — click to jump to parent for logging'
+          : 'Each box shows its full maintenance picture — click any box to drill in'}
+      />
+
+      <div className="stat-row">
+        <StatCard label="OVERDUE" value={overdue} color="#c4524b" icon={AlertTriangle} />
+        <StatCard label="DUE SOON" value={dueSoon} color="#d4a574" icon={Clock} />
+        <StatCard label="ON SCHEDULE" value={ok} color="#6a9a6a" icon={CheckCircle2} />
+        <StatCard label={cat.virtual ? 'PUMPS' : 'BOXES'} value={Object.keys(boxes).length} color="#7a8a9a" icon={Activity} />
+      </div>
+
+      <div className="boxes-grid">
+        {Object.entries(boxes).map(([bKey, box]) => {
+          const attrStatuses = Object.entries(box.attributes).map(([aKey, attr]) => {
+            const entries = lookupEntries(bKey, aKey, box);
+            const last = [...entries].sort((a, b) => b.date.localeCompare(a.date))[0];
+            const status = getStatus(last?.date, intervals[attr.type]);
+            return { aKey, attr, last, status };
+          });
+          return (
+            <div key={bKey} className="big-box-card" onClick={() => onSelectBox(bKey)}>
+              <div className="big-box-head">
+                <div>
+                  <div className="big-box-name">{box.name}</div>
+                  <div className="big-box-id">
+                    {cat.virtual && box.brand
+                      ? <>/ {box.brand}</>
+                      : <>/ {bKey}</>}
+                  </div>
+                </div>
+                <ChevronRight size={16} className="big-box-chev" />
+              </div>
+              <div className="attr-list">
+                {attrStatuses.map(({ aKey, attr, last, status }) => (
+                  <div key={aKey} className="attr-row">
+                    <div className="attr-name">{attr.label || TASK_TYPES[attr.type].label}</div>
+                    <div className="attr-meta">
+                      <span className="attr-date">{last?.date || '—'}</span>
+                      <span className="status-dot" style={{ background: status.color }} title={status.label} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, color, icon: Icon }) {
+  return (
+    <div className="stat-card" style={{ '--c': color }}>
+      <div className="stat-icon"><Icon size={16} /></div>
+      <div>
+        <div className="stat-value">{value}</div>
+        <div className="stat-label">{label}</div>
+      </div>
+    </div>
+  );
+}
+
+function BoxView({ category, boxKey, box, accent, data, intervals, onLog, onDelete }) {
+  if (!box) return null;
+  const argonAttrs = Object.entries(box.attributes).filter(([, a]) => a.type === 'argon');
+  const attrCount = Object.keys(box.attributes).length;
+
+  if (attrCount === 0) {
+    return (
+      <div className="panel">
+        <PanelHeader title={box.name} subtitle={`${category}.${boxKey} · no maintenance tasks defined`} />
+        <div className="empty-state">
+          <div className="empty-state-title">No maintenance tasks</div>
+          <div className="empty-state-sub">This piece of equipment is tracked for inventory purposes but doesn't have any scheduled maintenance. Add attributes in <code>CATEGORIES.{category}.boxes.{boxKey}.attributes</code> if that changes.</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="panel">
+      <PanelHeader title={box.name} subtitle={`${category}.${boxKey} · ${attrCount} maintenance attribute${attrCount === 1 ? '' : 's'}`} />
+
+      <div className="attrib-grid">
+        {Object.entries(box.attributes).map(([aKey, attr]) => {
+          const entries = data[aKey] || [];
+          const last = [...entries].sort((a, b) => b.date.localeCompare(a.date))[0];
+          const status = getStatus(last?.date, intervals[attr.type]);
+          return (
+            <AttributeCard
+              key={aKey}
+              attr={attr}
+              status={status}
+              last={last}
+              count={entries.length}
+              interval={intervals[attr.type]}
+              onLog={() => onLog(aKey)}
+            />
+          );
+        })}
+      </div>
+
+      {argonAttrs.map(([aKey]) => {
+        const entries = data[aKey] || [];
+        if (entries.length < 2) return null;
+        return <ArgonTrendChart key={aKey} entries={entries} boxName={box.name} accent={accent} />;
+      })}
+
+      <div className="logs-section">
+        <div className="section-title">ENTRY LOGS</div>
+        {Object.entries(box.attributes).map(([aKey, attr]) => {
+          const entries = [...(data[aKey] || [])].sort((a, b) => b.date.localeCompare(a.date));
+          const taskType = TASK_TYPES[attr.type];
+          return (
+            <div key={aKey} className="log-section">
+              <div className="log-section-head">
+                <div className="log-title">{attr.label || taskType.label} <span className="log-count">{entries.length}</span></div>
+                <button className="log-btn small" onClick={() => onLog(aKey)}><Plus size={12} /> ADD ENTRY</button>
+              </div>
+              <div className="log-table-wrap">
+                <table className="log-table">
+                  <thead>
+                    <tr>
+                      {taskType.fields.map(f => <th key={f}>{f}</th>)}
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {entries.length === 0 && (
+                      <tr><td colSpan={taskType.fields.length + 1} className="empty">No entries yet</td></tr>
+                    )}
+                    {entries.map(e => (
+                      <tr key={e.id}>
+                        {taskType.fields.map(f => <td key={f}>{e[f] ?? ''}</td>)}
+                        <td>
+                          <button className="del-btn" onClick={() => onDelete(aKey, e.id)}><X size={12} /></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function VirtualPumpView({ pumpKey, accent, allData, intervals, onJumpToParent }) {
+  const pumps = deriveVacuumPumps();
+  const pump = pumps[pumpKey];
+
+  if (!pump) {
+    return (
+      <div className="panel">
+        <PanelHeader title="Pump not found" subtitle="This pump may have been removed from its parent equipment" />
+      </div>
+    );
+  }
+
+  const taskRows = pump.attrKeys.map(attrKey => {
+    const attr = pump.attributes[attrKey];
+    const taskType = TASK_TYPES[attr.type];
+    const entries = [...(allData[pump.parentCat]?.[pump.parentBox]?.[attrKey] || [])].sort((a, b) => b.date.localeCompare(a.date));
+    const last = entries[0];
+    const interval = intervals[attr.type];
+    const status = getStatus(last?.date, interval);
+    return { attrKey, attr, taskType, entries, last, interval, status };
+  });
+
+  return (
+    <div className="panel">
+      <PanelHeader
+        title={pump.name}
+        subtitle={`Vacuum pump · part of ${pump.parentBoxName} (${pump.parentCatName})`}
+      />
+
+      <div className="virtual-banner">
+        <div className="virtual-banner-text">
+          This is a read-only view. To log entries, use the parent equipment view.
+        </div>
+        <button
+          className="virtual-banner-btn"
+          onClick={() => onJumpToParent(pump.parentCat, pump.parentBox)}
+        >
+          Open in {pump.parentBoxName} <ChevronRight size={13} />
+        </button>
+      </div>
+
+      <div className="attrib-grid">
+        {taskRows.map(({ attrKey, attr, taskType, entries, last, interval, status }) => (
+          <div key={attrKey} className="attrib-card" style={{ '--status': status.color }}>
+            <div className="attrib-card-head">
+              <div>
+                <div className="attrib-card-title">{attr.label || taskType.label}</div>
+                {pump.brand && <div className="attrib-card-sub">{pump.brand}</div>}
+              </div>
+              <div className="status-pill" style={{ background: status.color }}>{status.label}</div>
+            </div>
+            <div className="attrib-card-body">
+              <div className="kv"><span className="k">Last:</span><span className="v">{last?.date || '—'}</span></div>
+              <div className="kv"><span className="k">Interval:</span><span className="v">{interval ? `${interval}d` : 'not set'}</span></div>
+              <div className="kv"><span className="k">Total entries:</span><span className="v">{entries.length}</span></div>
+              {last?.notes && <div className="last-note">"{last.notes}"</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="logs-section">
+        <div className="section-title">ENTRY HISTORY (READ-ONLY)</div>
+        {taskRows.map(({ attrKey, attr, taskType, entries }) => (
+          <div key={attrKey} className="log-section">
+            <div className="log-section-head">
+              <div className="log-title">{attr.label || taskType.label} <span className="log-count">{entries.length}</span></div>
+            </div>
+            <div className="log-table-wrap">
+              <table className="log-table">
+                <thead>
+                  <tr>{taskType.fields.map(f => <th key={f}>{f}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {entries.length === 0 && (
+                    <tr><td colSpan={taskType.fields.length} className="empty">No entries yet</td></tr>
+                  )}
+                  {entries.map(e => (
+                    <tr key={e.id}>
+                      {taskType.fields.map(f => <td key={f}>{e[f] ?? ''}</td>)}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AttributeCard({ attr, status, last, count, interval, onLog }) {
+  const taskType = TASK_TYPES[attr.type];
+  return (
+    <div className="attrib-card" style={{ '--status': status.color }}>
+      <div className="attrib-card-head">
+        <div>
+          <div className="attrib-card-title">{attr.label || taskType.label}</div>
+          {attr.brand && <div className="attrib-card-sub">{attr.brand}</div>}
+        </div>
+        <div className="status-pill" style={{ background: status.color }}>{status.label}</div>
+      </div>
+      <div className="attrib-card-body">
+        <div className="kv"><span className="k">Last:</span><span className="v">{last?.date || '—'}</span></div>
+        <div className="kv"><span className="k">Interval:</span><span className="v">{interval ? `${interval}d` : 'not set'}</span></div>
+        <div className="kv"><span className="k">Total entries:</span><span className="v">{count}</span></div>
+        {last?.notes && <div className="last-note">"{last.notes}"</div>}
+      </div>
+      <button className="log-btn" onClick={onLog}><Plus size={12} /> LOG ENTRY</button>
+    </div>
+  );
+}
+
+function gatherTaskInstances(taskTypeKey, data) {
+  const instances = [];
+  Object.entries(CATEGORIES).forEach(([catKey, cat]) => {
+    if (cat.virtual) return;
+    Object.entries(cat.boxes).forEach(([boxKey, box]) => {
+      Object.entries(box.attributes).forEach(([attrKey, attr]) => {
+        if (attr.type === taskTypeKey) {
+          instances.push({
+            catKey, boxKey, attrKey, attr, box,
+            cat,
+            entries: data[catKey]?.[boxKey]?.[attrKey] || [],
+          });
+        }
+      });
+    });
+  });
+  return instances;
+}
+
+function TaskOverview({ data, intervals, onSelectTask }) {
+  return (
+    <div className="panel">
+      <PanelHeader title="By Task · Overview" subtitle="Check status of every maintenance type across all equipment at once" />
+
+      <div className="task-overview-grid">
+        {Object.entries(TASK_TYPES).map(([tKey, t]) => {
+          const instances = gatherTaskInstances(tKey, data);
+          const statuses = instances.map(inst => {
+            const last = [...inst.entries].sort((a, b) => b.date.localeCompare(a.date))[0];
+            return getStatus(last?.date, intervals[tKey]);
+          });
+          const overdue = statuses.filter(s => s.code === 'overdue').length;
+          const dueSoon = statuses.filter(s => s.code === 'due_soon').length;
+          const ok = statuses.filter(s => s.code === 'ok').length;
+          const noRecord = statuses.filter(s => s.code === 'none').length;
+
+          return (
+            <div key={tKey} className="task-overview-card" onClick={() => onSelectTask(tKey)}>
+              <div className="task-overview-head">
+                <div className="task-overview-name">{t.label}</div>
+                <ChevronRight size={16} className="task-overview-chev" />
+              </div>
+              <div className="task-overview-meta">
+                <span>{instances.length} location{instances.length === 1 ? '' : 's'}</span>
+                <span>·</span>
+                <span>{intervals[tKey] ? `${intervals[tKey]}d interval` : 'no interval set'}</span>
+              </div>
+              <div className="task-overview-stats">
+                {overdue > 0 && <span className="mini-stat" style={{ color: '#c4524b' }}>{overdue} overdue</span>}
+                {dueSoon > 0 && <span className="mini-stat" style={{ color: '#d4a574' }}>{dueSoon} due soon</span>}
+                {ok > 0 && <span className="mini-stat" style={{ color: '#6a9a6a' }}>{ok} ok</span>}
+                {noRecord > 0 && <span className="mini-stat" style={{ color: '#6b6b6b' }}>{noRecord} no record</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TaskView({ taskType, data, intervals, onLog, onDelete }) {
+  const t = TASK_TYPES[taskType];
+  const instances = gatherTaskInstances(taskType, data);
+  const interval = intervals[taskType];
+
+  const enriched = instances.map(inst => {
+    const sortedEntries = [...inst.entries].sort((a, b) => b.date.localeCompare(a.date));
+    const last = sortedEntries[0];
+    const status = getStatus(last?.date, interval);
+    return { ...inst, last, status, sortedEntries };
+  }).sort((a, b) => {
+    const order = { overdue: 0, due_soon: 1, ok: 2, tracked: 3, none: 4 };
+    if (order[a.status.code] !== order[b.status.code]) return order[a.status.code] - order[b.status.code];
+    if (!a.last) return 1;
+    if (!b.last) return -1;
+    return a.last.date.localeCompare(b.last.date);
+  });
+
+  return (
+    <div className="panel">
+      <PanelHeader title={`Task · ${t.label}`} subtitle={`Every location across all equipment · sorted by urgency · ${interval ? `${interval}d interval` : 'no interval set'}`} />
+
+      <div className="attrib-grid">
+        {enriched.map(inst => (
+          <TaskInstanceCard
+            key={`${inst.catKey}-${inst.boxKey}-${inst.attrKey}`}
+            inst={inst}
+            interval={interval}
+            onLog={() => onLog(inst.catKey, inst.boxKey, inst.attrKey)}
+          />
+        ))}
+      </div>
+
+      <div className="logs-section">
+        <div className="section-title">ENTRIES BY LOCATION</div>
+        {enriched.map(inst => {
+          const label = inst.attr.label || t.label;
+          return (
+            <div key={`${inst.catKey}-${inst.boxKey}-${inst.attrKey}`} className="log-section">
+              <div className="log-section-head">
+                <div className="log-title">
+                  {inst.box.name} <span className="log-sep">›</span> {label}
+                  <span className="log-count">{inst.sortedEntries.length}</span>
+                </div>
+                <button className="log-btn small" onClick={() => onLog(inst.catKey, inst.boxKey, inst.attrKey)}>
+                  <Plus size={12} /> ADD ENTRY
+                </button>
+              </div>
+              <div className="log-table-wrap">
+                <table className="log-table">
+                  <thead>
+                    <tr>
+                      {t.fields.map(f => <th key={f}>{f}</th>)}
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inst.sortedEntries.length === 0 && (
+                      <tr><td colSpan={t.fields.length + 1} className="empty">No entries yet</td></tr>
+                    )}
+                    {inst.sortedEntries.map(e => (
+                      <tr key={e.id}>
+                        {t.fields.map(f => <td key={f}>{e[f] ?? ''}</td>)}
+                        <td>
+                          <button className="del-btn" onClick={() => onDelete(inst.catKey, inst.boxKey, inst.attrKey, e.id)}><X size={12} /></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TaskInstanceCard({ inst, interval, onLog }) {
+  return (
+    <div className="attrib-card" style={{ '--status': inst.status.color }}>
+      <div className="attrib-card-head">
+        <div>
+          <div className="attrib-card-title">{inst.box.name}</div>
+          <div className="attrib-card-sub">
+            {inst.attr.label || TASK_TYPES[inst.attr.type].label}
+            {inst.attr.brand && ` · ${inst.attr.brand}`}
+          </div>
+        </div>
+        <div className="status-pill" style={{ background: inst.status.color }}>{inst.status.label}</div>
+      </div>
+      <div className="attrib-card-body">
+        <div className="kv"><span className="k">Last:</span><span className="v">{inst.last?.date || '—'}</span></div>
+        <div className="kv"><span className="k">Interval:</span><span className="v">{interval ? `${interval}d` : 'not set'}</span></div>
+        <div className="kv"><span className="k">Total entries:</span><span className="v">{inst.entries.length}</span></div>
+        {inst.last?.notes && <div className="last-note">"{inst.last.notes}"</div>}
+      </div>
+      <button className="log-btn" onClick={onLog}><Plus size={12} /> LOG ENTRY</button>
+    </div>
+  );
+}
+
+function ArgonTrendChart({ entries, boxName, accent }) {
+  const elId = `argon-${boxName.replace(/\s+/g, '-').toLowerCase()}`;
+
+  useEffect(() => {
+    const el = document.getElementById(elId);
+    if (!el) return;
+
+    const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
+
+    Plotly.newPlot(el, [
+      {
+        x: sorted.map(e => e.date),
+        y: sorted.map(() => 1),
+        type: 'scatter',
+        mode: 'markers',
+        name: 'Cylinder swap',
+        marker: { color: accent, size: 12, line: { color: '#0e1116', width: 1 } },
+        text: sorted.map(e => e.notes ? `${e.date}<br>${e.notes}` : e.date),
+        hovertemplate: '%{text}<extra></extra>',
+      },
+    ], {
+      title: { text: `${boxName.toUpperCase()} · ARGON SWAPS`, font: { size: 14, color: '#dcdfe4', family: "'Inter', sans-serif" } },
+      paper_bgcolor: 'transparent',
+      plot_bgcolor: 'transparent',
+      font: { color: '#a0a4ad', family: "'Inter', sans-serif", size: 12 },
+      xaxis: { gridcolor: '#1e242d', linecolor: '#2a3340', type: 'date' },
+      yaxis: { showgrid: false, showticklabels: false, zeroline: false, range: [0, 2] },
+      margin: { t: 40, r: 20, b: 50, l: 30 },
+      showlegend: false,
+      hovermode: 'closest',
+    }, { displayModeBar: false, responsive: true });
+  }, [entries, accent, boxName, elId]);
+
+  return (
+    <div className="chart-card-full">
+      <div id={elId} style={{ height: 200 }} />
+    </div>
+  );
+}
+
+function EntryModal({ attribute, boxName, onSave, onClose }) {
+  const taskType = TASK_TYPES[attribute.type];
+  const [form, setForm] = useState(() => {
+    const init = {};
+    taskType.fields.forEach(f => init[f] = f === 'date' ? today() : '');
+    return init;
+  });
+
+  const set = (f, v) => setForm(p => ({ ...p, [f]: v }));
+
+  const handleSave = () => {
+    if (!form.date) { alert('Date is required'); return; }
+    const cleaned = { ...form };
+    if (cleaned.startPSI === '') cleaned.startPSI = null;
+    else if (cleaned.startPSI != null) cleaned.startPSI = Number(cleaned.startPSI);
+    if (cleaned.remainPSI === '') cleaned.remainPSI = null;
+    else if (cleaned.remainPSI != null) cleaned.remainPSI = Number(cleaned.remainPSI);
+    onSave(cleaned);
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-head">
+          <div>
+            <div className="modal-title">LOG ENTRY</div>
+            <div className="modal-sub">{boxName} → {attribute.label || taskType.label}</div>
+          </div>
+          <button className="icon-btn" onClick={onClose}><X size={14} /></button>
+        </div>
+        <div className="modal-body">
+          {taskType.fields.map(f => (
+            <div key={f} className="form-row">
+              <label>{f}</label>
+              {f === 'date' && <input type="date" value={form[f]} onChange={e => set(f, e.target.value)} />}
+              {f === 'time' && <input type="time" value={form[f]} onChange={e => set(f, e.target.value)} />}
+              {(f === 'startPSI' || f === 'remainPSI') && (
+                <input type="number" value={form[f] ?? ''} onChange={e => set(f, e.target.value)} placeholder="PSI" />
+              )}
+              {f === 'notes' && <textarea value={form[f]} onChange={e => set(f, e.target.value)} rows={2} />}
+            </div>
+          ))}
+        </div>
+        <div className="modal-foot">
+          <button className="btn ghost" onClick={onClose}>Cancel</button>
+          <button className="btn primary" onClick={handleSave}>Save Entry</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SettingsModal({ intervals, setIntervals, onClose }) {
+  const [draft, setDraft] = useState(intervals);
+
+  const save = () => { setIntervals(draft); onClose(); };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-head">
+          <div className="modal-title">MAINTENANCE INTERVALS</div>
+          <button className="icon-btn" onClick={onClose}><X size={14} /></button>
+        </div>
+        <div className="modal-body">
+          <p className="setting-help">Days between maintenance events. Applied uniformly to all boxes. Leave blank for "no interval" (status will show 'Tracked').</p>
+          {Object.entries(TASK_TYPES).map(([tKey, t]) => (
+            <div key={tKey} className="form-row">
+              <label>{t.label}</label>
+              <input
+                type="number"
+                value={draft[tKey] ?? ''}
+                onChange={e => setDraft(p => ({ ...p, [tKey]: e.target.value === '' ? null : Number(e.target.value) }))}
+                placeholder={tKey === 'argon' ? 'usage tracker — no interval' : 'days'}
+                disabled={tKey === 'argon'}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="modal-foot">
+          <button className="btn ghost" onClick={onClose}>Cancel</button>
+          <button className="btn primary" onClick={save}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PanelHeader({ title, subtitle }) {
+  return (
+    <div className="panel-head">
+      <div className="panel-rule" />
+      <div>
+        <div className="panel-title">{title}</div>
+        <div className="panel-sub">{subtitle}</div>
+      </div>
+    </div>
+  );
+}
+
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+
+  .header { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; border-bottom: 1px solid #1e242d; background: linear-gradient(180deg, #11151c 0%, #0e1116 100%); }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo-mark { width: 32px; height: 32px; border: 1px solid #2a3340; display: flex; align-items: center; justify-content: center; position: relative; }
+  .logo-mark::before, .logo-mark::after { content: ''; position: absolute; background: #d4a574; }
+  .logo-mark::before { width: 8px; height: 1px; top: 50%; left: 4px; }
+  .logo-mark::after { width: 1px; height: 8px; left: 50%; top: 4px; }
+  .logo-dot { width: 6px; height: 6px; background: #d4a574; border-radius: 50%; box-shadow: 0 0 8px #d4a574; }
+  .header-title { font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 0.06em; color: #dcdfe4; }
+  .header-sub { font-family: 'Inter', sans-serif; font-size: 12px; color: #8a929d; margin-top: 3px; }
+  .header-right { display: flex; gap: 8px; }
+  .icon-btn { background: transparent; border: 1px solid #2a3340; color: #a0a4ad; padding: 7px 11px; font-family: 'Inter', sans-serif; font-size: 12px; letter-spacing: 0.04em; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; font-weight: 500; }
+  .icon-btn:hover { border-color: #d4a574; color: #d4a574; }
+
+  .alert-bar { background: #0c1015; border-bottom: 1px solid #1e242d; }
+  .alert-bar-row { display: flex; align-items: center; gap: 12px; padding: 10px 24px; }
+  .alert-pill { display: inline-flex; align-items: center; gap: 9px; background: transparent; border: 1px solid #2a3340; color: #8a929d; padding: 8px 14px; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; transition: all 0.15s; border-radius: 3px; }
+  .alert-pill:disabled { cursor: default; opacity: 0.45; }
+  .alert-pill.empty:not(:disabled):hover { border-color: #3a4350; color: #a0a4ad; }
+  .alert-pill.has-items { color: #dcdfe4; }
+  .alert-pill.overdue.has-items { border-color: rgba(196, 82, 75, 0.5); background: rgba(196, 82, 75, 0.08); color: #e08883; }
+  .alert-pill.overdue.has-items:hover { border-color: #c4524b; background: rgba(196, 82, 75, 0.14); }
+  .alert-pill.due-soon.has-items { border-color: rgba(212, 165, 116, 0.5); background: rgba(212, 165, 116, 0.08); color: #d4a574; }
+  .alert-pill.due-soon.has-items:hover { border-color: #d4a574; background: rgba(212, 165, 116, 0.14); }
+  .alert-pill.open { box-shadow: 0 0 0 2px rgba(212, 165, 116, 0.15); }
+  .alert-count { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 16px; line-height: 1; }
+  .alert-label { letter-spacing: 0.04em; }
+  .alert-chev { transition: transform 0.2s; opacity: 0.6; }
+  .alert-chev.open { transform: rotate(90deg); opacity: 1; }
+  .alert-all-clear { display: inline-flex; align-items: center; gap: 9px; color: #6a9a6a; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; padding: 8px 4px; }
+  .alert-dropdown { border-top: 1px solid #1e242d; background: #0e1116; max-height: 420px; overflow-y: auto; animation: dropDown 0.18s ease-out; }
+  @keyframes dropDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .alert-dropdown-head { padding: 12px 24px; font-family: 'Inter', sans-serif; font-size: 11px; letter-spacing: 0.1em; color: #8a929d; font-weight: 600; border-bottom: 1px solid #1e242d; display: flex; justify-content: space-between; align-items: center; }
+  .alert-dropdown-hint { font-size: 11px; color: #5a6470; font-weight: 400; letter-spacing: 0; font-style: italic; }
+  .alert-list { padding: 6px 0; }
+  .alert-item { display: flex; justify-content: space-between; align-items: center; width: 100%; background: transparent; border: none; cursor: pointer; padding: 10px 24px; text-align: left; transition: background 0.12s; font-family: 'Inter', sans-serif; color: #dcdfe4; }
+  .alert-item:hover { background: #11151c; }
+  .alert-item-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+  .alert-item-status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .alert-item-text { min-width: 0; flex: 1; }
+  .alert-item-primary { font-size: 14px; font-weight: 500; color: #dcdfe4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .alert-item-sep { color: #5a6470; margin: 0 4px; }
+  .alert-item-brand { color: #8a929d; font-weight: 400; }
+  .alert-item-secondary { font-size: 12px; color: #8a929d; margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .alert-item-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .alert-item-status-label { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; }
+  .alert-item .lucide-chevron-right { color: #5a6470; }
+  .alert-item:hover .lucide-chevron-right { color: #d4a574; }
+
+  .layout { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 60px); }
+  .sidebar { border-right: 1px solid #1e242d; padding: 16px 12px; background: #0c1015; }
+  .sidebar-section { margin-bottom: 18px; }
+  .lens-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: #0e1116; border: 1px solid #1e242d; padding: 3px; margin-bottom: 18px; border-radius: 3px; }
+  .lens-btn { background: transparent; border: none; color: #8a929d; padding: 8px 0; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; cursor: pointer; transition: all 0.15s; border-radius: 2px; }
+  .lens-btn:hover { color: #dcdfe4; }
+  .lens-btn.active { background: #11151c; color: #d4a574; box-shadow: 0 0 0 1px #2a3340; }
+  .task-overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .task-overview-card { background: #11151c; border: 1px solid #1e242d; padding: 18px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+  .task-overview-card::before { content: ''; position: absolute; top: 0; left: 0; height: 2px; width: 0; background: #d4a574; transition: width 0.3s; }
+  .task-overview-card:hover { border-color: #d4a574; }
+  .task-overview-card:hover::before { width: 100%; }
+  .task-overview-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .task-overview-name { font-family: 'Inter', sans-serif; font-weight: 700; color: #dcdfe4; font-size: 17px; letter-spacing: -0.01em; }
+  .task-overview-chev { color: #5a6470; transition: transform 0.2s, color 0.2s; }
+  .task-overview-card:hover .task-overview-chev { color: #d4a574; transform: translateX(3px); }
+  .task-overview-meta { display: flex; gap: 8px; font-size: 12px; color: #8a929d; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #1e242d; }
+  .task-overview-stats { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; }
+  .mini-stat { font-weight: 500; }
+  .attrib-card-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8a929d; margin-top: 2px; }
+  .log-sep { color: #5a6470; margin: 0 6px; }
+  .empty-state { background: #11151c; border: 1px dashed #2a3340; padding: 40px 28px; text-align: center; }
+  .empty-state-title { font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 600; color: #dcdfe4; margin-bottom: 8px; }
+  .empty-state-sub { font-size: 13px; color: #8a929d; line-height: 1.6; max-width: 560px; margin: 0 auto; }
+  .empty-state-sub code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: #0e1116; padding: 2px 6px; border-radius: 2px; color: #d4a574; border: 1px solid #2a3340; }
+  .virtual-banner { display: flex; justify-content: space-between; align-items: center; gap: 16px; background: rgba(154, 133, 184, 0.08); border: 1px solid rgba(154, 133, 184, 0.3); padding: 12px 16px; margin-bottom: 22px; border-radius: 3px; }
+  .virtual-banner-text { color: #c5b8d8; font-size: 13px; line-height: 1.5; }
+  .virtual-banner-btn { background: #9a85b8; border: 1px solid #9a85b8; color: #0e1116; padding: 8px 14px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; border-radius: 2px; }
+  .virtual-banner-btn:hover { background: #b09cc8; border-color: #b09cc8; }
+  .cat-btn { display: flex; align-items: center; gap: 9px; width: 100%; background: transparent; border: 1px solid transparent; color: #dcdfe4; padding: 9px 11px; text-align: left; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; transition: all 0.15s; letter-spacing: 0.02em; }
+  .cat-btn:hover { background: #11151c; }
+  .cat-btn.active { background: #11151c; border-left: 2px solid var(--accent, #d4a574); padding-left: 11px; }
+  .cat-btn.placeholder { opacity: 0.35; font-style: italic; cursor: default; font-size: 12px; font-weight: 400; }
+  .cat-btn.placeholder:hover { background: transparent; }
+  .cat-chev { margin-left: auto; color: #5a6470; transition: transform 0.18s ease, color 0.15s; flex-shrink: 0; }
+  .cat-btn:hover .cat-chev { color: #a0a4ad; }
+  .cat-chev.open { transform: rotate(90deg); color: var(--accent, #d4a574); }
+  .box-list { margin-top: 4px; padding-left: 8px; border-left: 1px solid #1e242d; margin-left: 11px; }
+  .view-btn { display: flex; align-items: center; gap: 7px; width: 100%; background: transparent; border: none; color: #a0a4ad; padding: 7px 12px; text-align: left; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 13px; transition: all 0.15s; font-weight: 400; }
+  .view-btn:hover { color: #dcdfe4; background: #11151c; }
+  .view-btn.active { color: #d4a574; background: #11151c; font-weight: 500; }
+  .main { padding: 24px 32px; overflow-y: auto; }
+  .panel-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 22px; }
+  .panel-rule { width: 3px; align-self: stretch; background: #d4a574; min-height: 36px; }
+  .panel-title { font-family: 'Inter', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; color: #dcdfe4; }
+  .panel-sub { font-size: 13px; color: #8a929d; margin-top: 4px; }
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: #11151c; border: 1px solid #1e242d; padding: 16px; display: flex; align-items: center; gap: 14px; border-left: 3px solid var(--c); }
+  .stat-icon { color: var(--c); }
+  .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 600; color: #dcdfe4; line-height: 1; }
+  .stat-label { font-family: 'Inter', sans-serif; font-size: 11px; letter-spacing: 0.08em; color: #8a929d; margin-top: 6px; font-weight: 500; }
+  .boxes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+  .big-box-card { background: #11151c; border: 1px solid #1e242d; padding: 18px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+  .big-box-card::before { content: ''; position: absolute; top: 0; left: 0; height: 2px; width: 0; background: #d4a574; transition: width 0.3s; }
+  .big-box-card:hover { border-color: #d4a574; }
+  .big-box-card:hover::before { width: 100%; }
+  .big-box-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #1e242d; }
+  .big-box-name { font-family: 'Inter', sans-serif; font-weight: 700; color: #dcdfe4; font-size: 17px; letter-spacing: -0.01em; }
+  .big-box-id { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #5a6470; margin-top: 2px; }
+  .big-box-chev { color: #5a6470; transition: transform 0.2s, color 0.2s; }
+  .big-box-card:hover .big-box-chev { color: #d4a574; transform: translateX(3px); }
+  .attr-list { display: flex; flex-direction: column; gap: 6px; }
+  .attr-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 13px; }
+  .attr-name { color: #c5c9d1; font-weight: 400; }
+  .attr-meta { display: flex; align-items: center; gap: 10px; }
+  .attr-date { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8a929d; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .attrib-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .attrib-card { background: #11151c; border: 1px solid #1e242d; padding: 14px; display: flex; flex-direction: column; gap: 10px; border-top: 2px solid var(--status); }
+  .attrib-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .attrib-card-title { font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; color: #dcdfe4; }
+  .attrib-card-body { display: flex; flex-direction: column; gap: 5px; }
+  .status-pill { font-family: 'Inter', sans-serif; font-size: 11px; letter-spacing: 0.04em; color: #0e1116; padding: 4px 9px; font-weight: 600; white-space: nowrap; border-radius: 2px; }
+  .kv { display: flex; justify-content: space-between; font-size: 13px; }
+  .kv .k { color: #8a929d; }
+  .kv .v { color: #dcdfe4; font-weight: 500; }
+  .last-note { font-size: 12px; color: #8a929d; font-style: italic; margin-top: 4px; padding-top: 6px; border-top: 1px solid #1e242d; line-height: 1.4; max-height: 38px; overflow: hidden; }
+  .log-btn { background: transparent; border: 1px solid #2a3340; color: #a0a4ad; padding: 7px 11px; font-family: 'Inter', sans-serif; font-size: 11px; letter-spacing: 0.05em; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; align-self: flex-start; transition: all 0.15s; font-weight: 500; }
+  .log-btn:hover { border-color: #d4a574; color: #d4a574; }
+  .log-btn.small { padding: 5px 9px; font-size: 11px; }
+  .chart-card-full { background: #11151c; border: 1px solid #1e242d; padding: 12px; margin-bottom: 24px; }
+  .logs-section { margin-top: 12px; }
+  .section-title { font-family: 'Inter', sans-serif; font-size: 13px; letter-spacing: 0.08em; color: #8a929d; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #1e242d; font-weight: 600; }
+  .log-section { margin-bottom: 22px; }
+  .log-section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .log-title { font-family: 'Inter', sans-serif; font-size: 14px; color: #dcdfe4; font-weight: 600; }
+  .log-count { background: #1e242d; color: #a0a4ad; padding: 2px 8px; font-size: 11px; margin-left: 8px; font-weight: 500; border-radius: 2px; }
+  .log-table-wrap { overflow-x: auto; border: 1px solid #1e242d; }
+  .log-table { width: 100%; border-collapse: collapse; font-family: 'Inter', sans-serif; font-size: 13px; }
+  .log-table th { background: #11151c; color: #8a929d; padding: 9px 11px; text-align: left; font-weight: 600; letter-spacing: 0.04em; border-bottom: 1px solid #1e242d; font-size: 12px; }
+  .log-table td { padding: 8px 11px; color: #dcdfe4; border-bottom: 1px solid #1a1f27; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
+  .log-table tr:hover td { background: #11151c; }
+  .log-table .empty { color: #5a6470; font-style: italic; text-align: center; padding: 20px; }
+  .del-btn { background: transparent; border: 1px solid #2a3340; color: #6b7480; padding: 3px; cursor: pointer; transition: all 0.15s; }
+  .del-btn:hover { border-color: #c4524b; color: #c4524b; }
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+  .modal { background: #11151c; border: 1px solid #2a3340; min-width: 420px; max-width: 540px; max-height: 90vh; overflow-y: auto; }
+  .modal-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 14px 18px; border-bottom: 1px solid #1e242d; gap: 12px; }
+  .modal-title { font-family: 'Inter', sans-serif; font-size: 14px; letter-spacing: 0.04em; color: #dcdfe4; font-weight: 600; }
+  .modal-sub { font-size: 12px; color: #8a929d; margin-top: 3px; }
+  .modal-body { padding: 18px; }
+  .modal-foot { padding: 14px 18px; border-top: 1px solid #1e242d; display: flex; justify-content: flex-end; gap: 10px; }
+  .form-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+  .form-row label { font-family: 'Inter', sans-serif; font-size: 12px; letter-spacing: 0.04em; color: #8a929d; font-weight: 500; }
+  .form-row input, .form-row select, .form-row textarea { background: #0e1116; border: 1px solid #2a3340; color: #dcdfe4; padding: 8px 10px; font-family: 'Inter', sans-serif; font-size: 14px; width: 100%; outline: none; }
+  .form-row input:disabled { opacity: 0.4; cursor: not-allowed; }
+  .form-row input:focus, .form-row select:focus, .form-row textarea:focus { border-color: #d4a574; }
+  .btn { padding: 9px 16px; font-family: 'Inter', sans-serif; font-size: 13px; letter-spacing: 0.02em; cursor: pointer; border: 1px solid #2a3340; transition: all 0.15s; font-weight: 500; }
+  .btn.ghost { background: transparent; color: #a0a4ad; }
+  .btn.ghost:hover { color: #dcdfe4; }
+  .btn.primary { background: #d4a574; color: #0e1116; border-color: #d4a574; font-weight: 600; }
+  .btn.primary:hover { background: #b8895c; }
+  .setting-help { font-size: 13px; color: #8a929d; margin-bottom: 18px; line-height: 1.55; }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { border-right: 0; border-bottom: 1px solid #1e242d; }
+    .stat-row { grid-template-columns: 1fr 1fr; }
+  }
+`;
+
+    // Mount
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(LabMaintenanceDashboard));
+  </script>
+</body>
+</html>
