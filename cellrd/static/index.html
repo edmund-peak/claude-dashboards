@@ -523,6 +523,22 @@ const channelFromFile = (fn) => {
   return last.replace(/^[\d.]+\-/, ""); // strip leading IP like "127.0.0.1-"
 };
 
+// Rack number → rack code. Mirrors config.json "rack_mapping" on the backend;
+// keep in sync if the physical cycler↔rack wiring changes.
+const RACK_MAP = { "3": "R03", "4": "R04", "5": "R05", "165": "R02", "166": "R01" };
+// Canonical channel id ("R05-T03-CH01") from a Neware run filename, matching the
+// backend's parse_filename: "…-BTS82-5-3-1-101.xlsx" -> rack 5, tester 3, ch 1.
+// This is what the chamber grid keys its channels by, so it resolves to a chamber
+// even for channels not currently occupied. Returns null if unparseable.
+const channelIdFromFile = (fn) => {
+  if (!fn) return null;
+  const m = fn.match(/-BTS\d+-(\d+)-(\d+)-(\d+)-/i);
+  if (!m) return null;
+  const rack = RACK_MAP[m[1]] || ("?" + m[1]);
+  const pad = (n) => String(parseInt(n, 10)).padStart(2, "0");
+  return rack + "-T" + pad(m[2]) + "-CH" + pad(m[3]);
+};
+
 // Human test-type label derived from the run filename:
 //   CYLT-…-RPT -> "Cycle Life"
 //   CLD-{N}M   -> "Calendar Life"
@@ -632,6 +648,76 @@ const getChamberCategory = (c) => {
   if (n === "Chamber_8") return "Formation";
   return "Miscellaneous";
 };
+
+// ─── Voltaiq tracking ───
+// Single source of truth: data.voltaiq maps a stable per-test key → true once
+// that test has been added to Voltaiq. The key is the Neware run filename — the
+// one identity shared by an active-tab channel (ch.filename), an RPT event
+// (ev.file), and the planner's most-recent event — so a tick in any view shows
+// in all of them. Tests with no run file fall back to cellId + a discriminator.
+const voltaiqKey = (file, cellId, fallback) =>
+  file ? file.replace(/\.xlsx$/i, "")
+       : "x:" + (cellId || "?") + "|" + (fallback || "");
+const channelVoltaiqKey = (ch) => voltaiqKey(ch.filename, ch.cellId, ch.currentTest);
+const eventVoltaiqKey = (cellId, ev) => voltaiqKey(ev && ev.file, cellId, ev && ev.start);
+const isInVoltaiq = (data, key) => !!(key && data && data.voltaiq && data.voltaiq[key]);
+async function toggleVoltaiq(data, persist, key) {
+  if (!key || !persist) return;
+  const nd = JSON.parse(JSON.stringify(data));
+  nd.voltaiq = nd.voltaiq || {};
+  if (nd.voltaiq[key]) delete nd.voltaiq[key];
+  else nd.voltaiq[key] = true;
+  await persist(nd);
+}
+
+// Corner-triangle Voltaiq indicator for storage squares and Gantt blocks.
+// Sits flush in the bottom-left corner; empty = faint outline, filled = solid green.
+function VoltaiqCorner({ on, onToggle, size }) {
+  const s = size || 18;
+  return (
+    <svg
+      width={s} height={s}
+      viewBox={`0 0 ${s} ${s}`}
+      style={{ position: "absolute", bottom: 0, left: 0, cursor: "pointer", display: "block" }}
+      onClick={(e) => { e.stopPropagation(); onToggle && onToggle(); }}
+    >
+      <title>{on ? "In Voltaiq — click to unmark" : "Not in Voltaiq — click when added"}</title>
+      <polygon
+        points={`0,${s} 0,0 ${s},${s}`}
+        fill={on ? "#34d399" : "rgba(255,255,255,0.08)"}
+        stroke="none"
+      />
+      <text
+        x="2" y={s - 2}
+        fontSize={Math.round(s * 0.45)}
+        fontWeight="800"
+        fontFamily="'JetBrains Mono', monospace"
+        fill={on ? "#0c0f14" : "rgba(255,255,255,0.3)"}
+        style={{ userSelect: "none" }}
+      >V</text>
+    </svg>
+  );
+}
+
+// Empty circle with a "V" = not yet in Voltaiq; filled = added. Click to toggle.
+function VoltaiqBadge({ on, onToggle, size, style }) {
+  const sz = size || 16;
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onToggle && onToggle(); }}
+      title={on ? "In Voltaiq — click to unmark" : "Not in Voltaiq yet — click when added"}
+      style={{
+        width: sz, height: sz, minWidth: sz, borderRadius: "50%",
+        border: "1.5px solid " + (on ? "#34d399" : "#5b6573"),
+        background: on ? "#34d399" : "transparent",
+        color: on ? "#0c0f14" : "#8891a0",
+        fontSize: Math.round(sz * 0.6), fontWeight: 800, lineHeight: 1, cursor: "pointer",
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        fontFamily: "'JetBrains Mono', monospace", padding: 0, boxSizing: "border-box",
+        ...(style || {}),
+      }}>V</button>
+  );
+}
 
 const STORAGE_KEY = "cellrd-lab-data-v4";
 
@@ -1062,6 +1148,11 @@ function App() {
             // Same guard for per-cell metadata (project) — don't drop an edit if
             // the server predates the cellMeta feature (i.e. hasn't restarted).
             if (!fresh.cellMeta) fresh.cellMeta = prev.cellMeta || {};
+            // Same guard for Voltaiq ticks — keep them only if the server omits
+            // the key entirely (predates the feature / not restarted), so a
+            // click doesn't vanish in 10s. An empty {} from a restarted server
+            // is a real state (you un-ticked the last one), so don't override it.
+            if (!fresh.voltaiq) fresh.voltaiq = prev.voltaiq || {};
             return fresh;
           });
           setLastSynced(new Date());
@@ -1347,13 +1438,26 @@ function App() {
           </div>
         </div>
         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-          {[["schedule", "Active"], ["rpt", "RPT Planner"], ["archive", "Archive"]].map(([key, label]) => (
+          {[["schedule", "Active"], ["rpt", "RPT Planner"], ["formation_hist", "Formation"], ["archive", "Archive"]].map(([key, label]) => (
             <button key={key} onClick={() => setTab(key)} style={{
               padding: "6px 16px", borderRadius: 6, border: "1px solid " + (tab === key ? "#4e9af5" : "#2a303c"),
               background: tab === key ? "rgba(78,154,245,0.15)" : "transparent", color: tab === key ? "#4e9af5" : "#8891a0",
               cursor: "pointer", fontSize: 13, fontWeight: 500, fontFamily: "inherit"
             }}>{label}</button>
           ))}
+          <button onClick={async () => {
+            try {
+              const r = await fetch("/api/data", { cache: "no-store" });
+              const payload = await r.json();
+              const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+              a.href = url; a.download = `cellrd-backup-${ts}.json`;
+              document.body.appendChild(a); a.click();
+              document.body.removeChild(a); URL.revokeObjectURL(url);
+            } catch (e) { alert("Backup failed: " + e.message); }
+          }} title="Download full data backup" style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #2a303c", background: "transparent", color: "#8891a0", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>↓ Backup</button>
           <button onClick={() => setSettingsOpen(true)} style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #2a303c", background: "transparent", color: "#8891a0", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>⚙</button>
         </div>
       </div>
@@ -1464,6 +1568,9 @@ function App() {
         )}
         {tab === "rpt" && (
           <RptTab data={data} stats={stats} onAdd={() => setRptModal(true)} onDelete={handleDeleteRpt} onLogEvent={handleLogRptEvent} persist={persist} tempFilter={tempFilter} onOpenCell={setOpenCellId} />
+        )}
+        {tab === "formation_hist" && (
+          <FormationHistTab data={data} onOpenCell={setOpenCellId} />
         )}
         {tab === "archive" && (
           <ArchiveTab data={data} onUnarchive={handleUnarchive} onOpenCell={setOpenCellId} />
@@ -1775,6 +1882,33 @@ function ScheduleTab({ data, stats, expandedChambers, setExpandedChambers, toggl
         </div>
       )}
 
+      {/* ── Unassigned cells warning ── */}
+      {(() => {
+        const unassigned = [];
+        data.chambers.forEach(c => {
+          c.channels.forEach(ch => {
+            if (ch.cellId && !ch.project) unassigned.push(ch.cellId);
+          });
+        });
+        if (unassigned.length === 0) return null;
+        return (
+          <div style={{
+            marginBottom: 12, padding: "9px 14px", borderRadius: 6,
+            border: "1px solid rgba(251,191,36,0.45)", background: "rgba(251,191,36,0.07)",
+            display: "flex", alignItems: "center", gap: 10,
+            animation: "pulse 2s ease-in-out infinite",
+          }}>
+            <span style={{ fontSize: 15, lineHeight: 1 }}>⚠</span>
+            <span style={{ fontSize: 12, color: "#fbbf24", fontWeight: 500 }}>
+              {unassigned.length} cell{unassigned.length !== 1 ? "s" : ""} missing project or group:{" "}
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 400 }}>
+                {unassigned.join(", ")}
+              </span>
+            </span>
+          </div>
+        );
+      })()}
+
       {/* Expand/Collapse All */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
         <button onClick={toggleAll} style={{
@@ -1902,9 +2036,12 @@ function ScheduleTab({ data, stats, expandedChambers, setExpandedChambers, toggl
                                         <span style={{ color: "#3a4250", fontSize: 11 }}>— {ch.purpose}</span>
                                       )}
                                     </div>
-                                    <div style={{ minWidth: 0 }}>
-                                      <span style={{ color: (ch.filename || ch.currentTest) ? "#e2e6ed" : "#3a4250", fontSize: 11 }}>{ch.filename ? testTypeLabel(ch.filename) : (ch.currentTest || "—")}</span>
-                                      {ch.filename && <div className="fn-tip" data-full={ch.filename} style={{ minWidth: 0 }}><div style={{ fontSize: 9, color: "#4a5260", fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{shortFileName(ch.filename)}</div></div>}
+                                    <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                                      {ch.cellId && <VoltaiqBadge size={15} on={isInVoltaiq(data, channelVoltaiqKey(ch))} onToggle={() => toggleVoltaiq(data, persist, channelVoltaiqKey(ch))} />}
+                                      <div style={{ minWidth: 0 }}>
+                                        <span style={{ color: (ch.filename || ch.currentTest) ? "#e2e6ed" : "#3a4250", fontSize: 11 }}>{ch.filename ? testTypeLabel(ch.filename) : (ch.currentTest || "—")}</span>
+                                        {ch.filename && <div className="fn-tip" data-full={ch.filename} style={{ minWidth: 0 }}><div style={{ fontSize: 9, color: "#4a5260", fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{shortFileName(ch.filename)}</div></div>}
+                                      </div>
                                     </div>
                                     <span style={{ color: "#8891a0", fontSize: 11 }}>{fmtDateFull(ch.startDate)}</span>
                                     <div style={{ display: "flex", gap: 4 }}>
@@ -2057,6 +2194,192 @@ function ChannelModal({ data, chamberIdx, channelIdx, onSave, onClose }) {
         <button onClick={onClose} style={btnSecondary}>Cancel</button>
       </div>
     </Overlay>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// FORMATION HISTORY TAB — most recent formation runs
+// ═══════════════════════════════════════════════════
+function FormationHistTab({ data, onOpenCell }) {
+  // Active cells currently in Chamber_8 (the formation chamber)
+  const activeCells = React.useMemo(() => {
+    const ch8 = (data.chambers || []).find(c => c.name === "Chamber_8");
+    if (!ch8) return [];
+    return ch8.channels
+      .filter(ch => ch.cellId)
+      .map(ch => ({
+        cellId: ch.cellId,
+        first: ch.startDate || null,
+        last: null,   // still running
+        project: ch.project || null,
+        group: ch.analysisGroup || null,
+        live: true,
+      }));
+  }, [data]);
+
+  // Archived formation batches from folder-sweep archive
+  const archivedBatches = React.useMemo(() => {
+    const arch = data.archive || {};
+    const cells = [];
+    Object.entries(arch).forEach(([cellId, entry]) => {
+      const fm = entry.tests && entry.tests["Formation"];
+      if (!fm) return;
+      let project = null, group = null;
+      for (const c of (data.chambers || [])) {
+        const ch = c.channels.find(x => x.cellId === cellId);
+        if (ch) { project = ch.project || null; group = ch.analysisGroup || null; break; }
+      }
+      cells.push({ cellId, first: fm.first, last: fm.last, project, group, live: false });
+    });
+    cells.sort((a, b) => (b.last || "").localeCompare(a.last || ""));
+
+    // Cluster into batches by last-date proximity (≤7 days)
+    if (cells.length === 0) return [];
+    const groups = [];
+    let current = [cells[0]];
+    for (let i = 1; i < cells.length; i++) {
+      const prev = new Date(current[0].last + "T00:00:00");
+      const curr = new Date(cells[i].last + "T00:00:00");
+      if (Math.abs((prev - curr) / 86400000) <= 7) {
+        current.push(cells[i]);
+      } else {
+        groups.push(current);
+        current = [cells[i]];
+      }
+    }
+    groups.push(current);
+    return groups;
+  }, [data]);
+
+  // "current" is index -1; archived batches are 0, 1, 2 …
+  const [selectedBatch, setSelectedBatch] = React.useState(-1);
+
+  // Auto-select: current if live cells exist, else most recent archived batch
+  const effectiveBatch = selectedBatch === -1
+    ? (activeCells.length > 0 ? "current" : 0)
+    : selectedBatch === "current" ? "current" : selectedBatch;
+
+  const batch = effectiveBatch === "current" ? activeCells : (archivedBatches[effectiveBatch] || []);
+  const batchLastDate = batch.length > 0 ? batch.reduce((m, c) => (c.last || "") > m ? (c.last || "") : m, batch[0].last || "") : null;
+  const batchFirstDate = batch.length > 0 ? batch.reduce((m, c) => (c.first || "9") < m ? (c.first || "9") : m, batch[0].first || "") : null;
+
+  const hasAnything = activeCells.length > 0 || archivedBatches.length > 0;
+  if (!hasAnything) {
+    return (
+      <div style={{ padding: "48px 0", textAlign: "center", color: "#3a4250", fontSize: 12 }}>
+        No formation history yet — cells appear here once their formation test files are detected.
+      </div>
+    );
+  }
+
+  const SHELF_SIZE = 6;
+  const shelves = [];
+  for (let s = 0; s < Math.ceil(batch.length / SHELF_SIZE); s++) {
+    shelves.push(batch.slice(s * SHELF_SIZE, (s + 1) * SHELF_SIZE));
+  }
+  const isLive = effectiveBatch === "current";
+
+  return (
+    <div style={{ paddingTop: 16 }}>
+      {/* Batch selector */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", color: "#64748b", marginRight: 4 }}>Batch:</span>
+        {activeCells.length > 0 && (
+          <button onClick={() => setSelectedBatch("current")} style={{
+            padding: "3px 11px", borderRadius: 4,
+            border: "1px solid " + (effectiveBatch === "current" ? "#34d399" : "#2a303c"),
+            background: effectiveBatch === "current" ? "rgba(52,211,153,0.12)" : "transparent",
+            color: effectiveBatch === "current" ? "#34d399" : "#64748b",
+            cursor: "pointer", fontSize: 11, fontWeight: 500, fontFamily: "inherit"
+          }}>
+            ● Current · {activeCells.length} cell{activeCells.length !== 1 ? "s" : ""}
+          </button>
+        )}
+        {archivedBatches.map((b, i) => {
+          const lastDate = b.reduce((m, c) => c.last > m ? c.last : m, b[0].last);
+          const active = effectiveBatch === i;
+          return (
+            <button key={i} onClick={() => setSelectedBatch(i)} style={{
+              padding: "3px 11px", borderRadius: 4,
+              border: "1px solid " + (active ? "#fbbf24" : "#2a303c"),
+              background: active ? "rgba(251,191,36,0.12)" : "transparent",
+              color: active ? "#fbbf24" : "#64748b",
+              cursor: "pointer", fontSize: 11, fontWeight: 500, fontFamily: "inherit"
+            }}>
+              {fmtDate(lastDate)} · {b.length} cell{b.length !== 1 ? "s" : ""}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Chamber card */}
+      <div style={{ background: "#151920", border: "1px solid " + (isLive ? "rgba(52,211,153,0.30)" : "#2a303c"), borderRadius: 8, overflow: "hidden" }}>
+        {/* Header */}
+        <div style={{ padding: "12px 16px", borderBottom: "1px solid " + (isLive ? "rgba(52,211,153,0.20)" : "#2a303c"), display: "flex", alignItems: "center", justifyContent: "space-between", background: "#1c2129" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>Chamber_8</span>
+            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.30)", fontFamily: "'JetBrains Mono', monospace" }}>45°C · Formation</span>
+            {isLive && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: "rgba(52,211,153,0.10)", color: "#34d399", border: "1px solid rgba(52,211,153,0.30)", fontFamily: "'JetBrains Mono', monospace" }}>● Live</span>}
+          </div>
+          <div style={{ fontSize: 12, color: "#8891a0", fontFamily: "'JetBrains Mono', monospace" }}>
+            {isLive
+              ? (batchFirstDate ? <span>Started {fmtDate(batchFirstDate)}</span> : null)
+              : (batchFirstDate && batchLastDate ? <span>{fmtDate(batchFirstDate)} → {fmtDate(batchLastDate)}</span> : null)
+            }
+            <span style={{ marginLeft: 12, color: "#64748b" }}>{batch.length} cell{batch.length !== 1 ? "s" : ""}</span>
+          </div>
+        </div>
+
+        {/* Shelves */}
+        <div style={{ padding: "0 8px 8px" }}>
+          {shelves.map((shelfCells, si) => (
+            <div key={si} style={{ marginBottom: si < shelves.length - 1 ? 6 : 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px 4px", borderBottom: "1px solid #1e2530" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#8891a0", letterSpacing: "0.3px" }}>Shelf {si + 1}</span>
+                <span style={{ fontSize: 10, color: "#64748b", fontFamily: "'JetBrains Mono', monospace" }}>{shelfCells.length}/{SHELF_SIZE}</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 200px 80px", gap: 0, padding: "3px 8px 2px", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", color: "#64748b" }}>
+                <span>Cell ID / Project · Group</span><span>{isLive ? "Start Date" : "Formation Dates"}</span><span>Days</span>
+              </div>
+              {shelfCells.map((cell, ci) => {
+                const days = (cell.first && cell.last) ? daysBetween(cell.first, cell.last) : null;
+                return (
+                  <div key={ci} style={{
+                    display: "grid", gridTemplateColumns: "1fr 200px 80px",
+                    gap: 0, padding: "6px 8px", fontSize: 12, alignItems: "center",
+                    borderBottom: "1px solid #1a1f27",
+                    background: isLive ? "rgba(52,211,153,0.03)" : "rgba(251,191,36,0.04)"
+                  }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                      <span
+                        onClick={() => onOpenCell && onOpenCell(cell.cellId)}
+                        style={{ color: "#e2e6ed", fontWeight: 500, cursor: "pointer", borderBottom: "1px dotted #3a4250", display: "inline-block", width: "fit-content" }}
+                      >{cell.cellId}</span>
+                      {(cell.project || cell.group) && (
+                        <span style={{ fontSize: 10, color: "#64748b" }}>
+                          {cell.project || ""}
+                          {cell.project && cell.group ? " · " : ""}
+                          {cell.group || ""}
+                        </span>
+                      )}
+                    </div>
+                    <span style={{ color: "#8891a0", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
+                      {isLive
+                        ? (fmtDate(cell.first) || "—")
+                        : (fmtDate(cell.first) + " → " + fmtDate(cell.last))
+                      }
+                    </span>
+                    <span style={{ color: "#64748b", fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
+                      {isLive ? "—" : (days != null ? days + "d" : "—")}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2493,21 +2816,32 @@ function StorageIntervalsView({ data }) {
 // CHANNEL USAGE GANTT
 // ═══════════════════════════════════════════════════
 function ChannelUsageGantt({ data, persist, tempFilter, onOpenCell }) {
-  const [selectedBlocks, setSelectedBlocks] = React.useState(new Set()); // set of "cellId|start|rptNumber"
+  const [selectedBlocks, setSelectedBlocks] = React.useState(new Set()); // cohort highlighted during drag
   const [dragState, setDragState] = React.useState(null);
-  const [pendingMove, setPendingMove] = React.useState(null);
   const [resizeState, setResizeState] = React.useState(null);   // live return-date edge drag
-  const scrollRef = React.useCallback(node => { if (node && !node._scrolled) { node._scrolled = true; node.scrollLeft = PAST_DAYS * COL_W; } }, []);
-  const detailRef = React.useCallback(node => { if (node) node.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, [selectedBlocks]);
+  const [dragMode, setDragMode] = React.useState("cohort"); // "single" | "cohort"
+  const [labelMode, setLabelMode] = React.useState("meta"); // "meta" | "filename"
+  const scrollNodeRef = React.useRef(null);
+  const scrollRef = React.useCallback(node => {
+    scrollNodeRef.current = node;
+    if (node && !node._scrolled) { node._scrolled = true; node.scrollLeft = 90 * 32; }
+  }, []);
 
-  const COL_W = 32;
+  const COL_W = labelMode === "filename" ? 110 : 32;
   const ROW_H = 40;
   const LABEL_W = 130;
   const HEADER_H = 46;
-  const PAST_DAYS = 90;
-  const FUTURE_DAYS = 210;
+  const PAST_DAYS = labelMode === "filename" ? 3 : 90;
+  const FUTURE_DAYS = labelMode === "filename" ? 8 : 210;
   const TOTAL_DAYS = PAST_DAYS + FUTURE_DAYS;
   const MAX_PROJECTIONS = 12; // how many future RPTs to project (bounded by viewEnd anyway)
+
+  // When switching to filename mode, find the nearest upcoming RPT start and
+  // scroll to the left edge of that narrow window (it starts 3 days before).
+  React.useEffect(() => {
+    if (!scrollNodeRef.current) return;
+    scrollNodeRef.current.scrollLeft = labelMode === "filename" ? 0 : 90 * 32;
+  }, [labelMode]);
 
   const blockKey = (b) => `${b.cellId}|${b.start}|${b.rptNumber}`;
 
@@ -2515,8 +2849,16 @@ function ChannelUsageGantt({ data, persist, tempFilter, onOpenCell }) {
     const rptDur = data.rptSettings?.durationDays || 4;
     const restDays = data.rptSettings?.restDays || 28;
     const todayStr = today();
-    const viewStart = addDays(todayStr, -PAST_DAYS);
-    const viewEnd = addDays(todayStr, FUTURE_DAYS);
+
+    // In filename mode, anchor the window on the nearest upcoming RPT start.
+    let anchorDate = todayStr;
+    if (labelMode === "filename") {
+      const upcoming = (data.rptCells || [])
+        .map(c => c.nextRptStart).filter(d => d && d >= todayStr).sort();
+      if (upcoming.length > 0) anchorDate = upcoming[0];
+    }
+    const viewStart = labelMode === "filename" ? addDays(anchorDate, -PAST_DAYS) : addDays(todayStr, -PAST_DAYS);
+    const viewEnd   = labelMode === "filename" ? addDays(anchorDate,  FUTURE_DAYS) : addDays(todayStr,  FUTURE_DAYS);
 
     const dates = [];
     for (let i = 0; i < TOTAL_DAYS; i++) {
@@ -2592,8 +2934,9 @@ function ChannelUsageGantt({ data, persist, tempFilter, onOpenCell }) {
             type: "completed", projected: false,   // real runs are facts → never whole-drag
             rptNumber, soc: rc.soc, storageTemp: rc.storageTemp,
             assignedStorage: rc.assignedStorage,
-            onTest, _rptIdx: rc._idx,
+            onTest, _rptIdx: rc._idx, file: ev.file || null,
             monthLabel: (rptNumber - 1) + "M", socLabel, tempLabel,
+            capacityMah: rc.capacityMah ?? null,
             channel: key,
           });
         });
@@ -2626,7 +2969,7 @@ function ChannelUsageGantt({ data, persist, tempFilter, onOpenCell }) {
               rptNumber: projNum, soc: rc.soc, storageTemp: rc.storageTemp,
               assignedStorage: rc.assignedStorage, _rptIdx: rc._idx,
               isFirstFuture: projNum === firstFuture,
-              monthLabel: (projNum - 1) + "M", socLabel, tempLabel, channel: key,
+              monthLabel: (projNum - 1) + "M", socLabel, tempLabel, capacityMah: rc.capacityMah ?? null, channel: key,
             });
           }
           projNum++;
@@ -2681,7 +3024,7 @@ function ChannelUsageGantt({ data, persist, tempFilter, onOpenCell }) {
     });
 
     return { dates, channels, channelBlocks, channelLanes, overlaps, gaps, viewStart, rptDur, restDays, todayStr };
-  }, [data, tempFilter]);
+  }, [data, tempFilter, labelMode, PAST_DAYS, FUTURE_DAYS, TOTAL_DAYS]);
 
   const { dates, channels, channelBlocks, channelLanes, overlaps, gaps, viewStart, rptDur, restDays, todayStr } = ganttData;
 
@@ -2745,43 +3088,27 @@ function ChannelUsageGantt({ data, persist, tempFilter, onOpenCell }) {
   };
 
   const handleBlockClick = React.useCallback((e, b) => {
-    // Only handle click if we didn't drag
     if (dragRef.current && dragRef.current.moved) return;
-    const key = blockKey(b);
-    if (e.shiftKey || e.ctrlKey || e.metaKey) {
-      setSelectedBlocks(prev => {
-        const next = new Set(prev);
-        if (next.has(key)) next.delete(key); else next.add(key);
-        return next;
-      });
-    } else {
-      setSelectedBlocks(prev => prev.has(key) && prev.size === 1 ? new Set() : new Set([key]));
-    }
-  }, []);
+    if (onOpenCell) onOpenCell(b.cellId);
+  }, [onOpenCell]);
 
-  const getSelectedBlockObjects = React.useCallback(() => {
-    const all = [];
-    Object.values(channelBlocks).forEach(blocks => {
-      blocks.forEach(b => { if (selectedBlocks.has(blockKey(b))) all.push(b); });
-    });
-    return all;
-  }, [channelBlocks, selectedBlocks]);
-
-  // ── Drag handler — moves all selected blocks ──
+  // ── Drag handler — moves all projected blocks with the same start date ──
   const handlePointerDown = React.useCallback((e, block) => {
     if (block.type === "completed") return;
     const startX = e.clientX || (e.touches && e.touches[0].clientX);
     const startY = e.clientY || (e.touches && e.touches[0].clientY);
-    const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
 
-    // Auto-select the dragged block if not already selected
-    // But don't clobber existing selection if shift/ctrl held
-    const bk = blockKey(block);
-    if (!isMultiSelect && !selectedBlocks.has(bk)) {
-      setSelectedBlocks(new Set([bk]));
-    }
+    // Select cohort or just the single block depending on drag mode
+    const cohortKeys = new Set();
+    Object.values(channelBlocks).forEach(blocks => {
+      blocks.forEach(b => {
+        if (b.projected && (dragMode === "single" ? b === block : b.start === block.start))
+          cohortKeys.add(blockKey(b));
+      });
+    });
+    setSelectedBlocks(cohortKeys);
 
-    dragRef.current = { block, startX, startY, moved: false, currentOffset: 0, isMultiSelect };
+    dragRef.current = { block, startX, startY, moved: false, currentOffset: 0 };
     setDragState({ block, startX, currentOffset: 0 });
 
     const handleMove = (ev) => {
@@ -2808,9 +3135,10 @@ function ChannelUsageGantt({ data, persist, tempFilter, onOpenCell }) {
       document.removeEventListener("touchend", handleUp);
 
       if (dragRef.current && dragRef.current.moved && dragRef.current.currentOffset !== 0) {
-        setPendingMove({ daysDelta: dragRef.current.currentOffset, triggerBlock: dragRef.current.block });
+        applyMoveRef.current(dragRef.current.currentOffset, dragRef.current.block);
       }
       setDragState(null);
+      setSelectedBlocks(new Set());
       // Don't clear dragRef.moved yet — onClick handler needs it
       setTimeout(() => { dragRef.current = null; }, 0);
     };
@@ -2821,46 +3149,32 @@ function ChannelUsageGantt({ data, persist, tempFilter, onOpenCell }) {
     document.addEventListener("touchend", handleUp);
   }, [selectedBlocks]);
 
-  const pendingMoveInfo = React.useMemo(() => {
-    if (!pendingMove) return null;
-    const selBlocks = getSelectedBlockObjects().filter(b => b.type !== "completed");
-    if (selBlocks.length === 0) return null;
-    return {
-      blocks: selBlocks,
-      daysDelta: pendingMove.daysDelta,
-      newStarts: selBlocks.map(b => ({ block: b, newStart: addDays(b.start, pendingMove.daysDelta) })),
-    };
-  }, [pendingMove, getSelectedBlockObjects]);
-
-  // ── Confirm move — mutates rptCells events directly ──
-  const handleConfirmMove = React.useCallback(async () => {
-    if (!pendingMoveInfo || !persist) return;
-    const { blocks: moveBlocks, daysDelta } = pendingMoveInfo;
+  // ── Apply move — pins all projected blocks sharing triggerBlock's start date ──
+  const applyMoveRef = React.useRef(null);
+  applyMoveRef.current = async (daysDelta, triggerBlock) => {
+    if (!persist || !daysDelta) return;
     const nd = JSON.parse(JSON.stringify(data));
+    const targetStart = triggerBlock.start;
 
-    // Only projected (future) boxes are whole-draggable. Sliding one PINS it:
-    // the first future RPT pins via nextRptStart/nextRptOverride; later RPTs pin
-    // via rptPins[rptNumber]. The projection re-cadences the tail at 4+28 from
-    // each pin, so subsequent boxes follow automatically.
-    moveBlocks.forEach(block => {
-      const cell = nd.rptCells[block._rptIdx];
-      if (!cell || !block.projected) return;
-      const newStart = addDays(block.start, daysDelta);
-      if (block.isFirstFuture) {
-        cell.nextRptStart = newStart;
-        cell.nextRptOverride = newStart;  // pin so the watcher keeps it
-      } else {
-        cell.rptPins = cell.rptPins || {};
-        cell.rptPins[block.rptNumber] = newStart;
-      }
+    Object.values(channelBlocks).forEach(blocks => {
+      blocks.forEach(block => {
+        if (!block.projected) return;
+        if (dragMode === "single" ? block !== triggerBlock : block.start !== targetStart) return;
+        const cell = nd.rptCells[block._rptIdx];
+        if (!cell) return;
+        const newStart = addDays(block.start, daysDelta);
+        if (block.isFirstFuture) {
+          cell.nextRptStart = newStart;
+          cell.nextRptOverride = newStart;
+        } else {
+          cell.rptPins = cell.rptPins || {};
+          cell.rptPins[block.rptNumber] = newStart;
+        }
+      });
     });
 
     await persist(nd);
-    setPendingMove(null);
-    setSelectedBlocks(new Set());
-  }, [pendingMoveInfo, data, persist]);
-
-  const handleCancelMove = React.useCallback(() => setPendingMove(null), []);
+  };
 
   // ── Recommendations ──
   const recommendations = React.useMemo(() => {
@@ -2875,77 +3189,9 @@ function ChannelUsageGantt({ data, persist, tempFilter, onOpenCell }) {
     return recs;
   }, [channels, channelBlocks, overlaps, gaps]);
 
-  const firstSelected = React.useMemo(() => {
-    const objs = getSelectedBlockObjects();
-    return objs.length > 0 ? objs[0] : null;
-  }, [getSelectedBlockObjects]);
 
   return (
     <div>
-      {/* ── Pending Move Confirmation ── */}
-      {pendingMoveInfo && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.55)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(3px)" }}>
-          <div style={{ background: "#1c2129", border: "1px solid #fbbf24", borderRadius: 12, padding: 24, maxWidth: 520, width: "90%", maxHeight: "80vh", overflowY: "auto" }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#fbbf24", marginBottom: 8 }}>⚡ Confirm Schedule Change</div>
-            <div style={{ fontSize: 13, color: "#e2e6ed", marginBottom: 12, lineHeight: "20px" }}>
-              Move <strong>{pendingMoveInfo.blocks.length}</strong> block{pendingMoveInfo.blocks.length !== 1 ? "s" : ""} by
-              <strong style={{ color: pendingMoveInfo.daysDelta > 0 ? "#34d399" : "#f87171" }}> {pendingMoveInfo.daysDelta > 0 ? "+" : ""}{pendingMoveInfo.daysDelta} day{Math.abs(pendingMoveInfo.daysDelta) !== 1 ? "s" : ""}</strong>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 16 }}>
-              {pendingMoveInfo.newStarts.map(({ block: b, newStart }, i) => (
-                <div key={i} style={{ fontSize: 12, color: "#8891a0", display: "flex", gap: 8, alignItems: "center" }}>
-                  <span style={{ fontWeight: 600, color: tempBaseColor(b.storageTemp), minWidth: 120 }}>{b.cellId}</span>
-                  <span style={{ color: "#64748b" }}>RPT #{b.rptNumber}</span>
-                  <span>{fmtDate(b.start)} → <strong style={{ color: "#e2e6ed" }}>{fmtDate(newStart)}</strong></span>
-                </div>
-              ))}
-            </div>
-            <div style={{ fontSize: 12, color: "#8891a0", marginBottom: 16 }}>
-              Changes will update event dates directly. Future projected RPTs will recalculate.
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={handleConfirmMove} style={{ padding: "8px 20px", borderRadius: 6, border: "1px solid #fbbf24", background: "rgba(251,191,36,0.15)", color: "#fbbf24", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit" }}>Confirm Move</button>
-              <button onClick={handleCancelMove} style={{ padding: "8px 20px", borderRadius: 6, border: "1px solid #2a303c", background: "transparent", color: "#8891a0", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Summary Recommendations ── */}
-      {recommendations.length > 0 && (
-        <div style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 6 }}>
-          {recommendations.map((rec, i) => {
-            const iconMap = { error: "⚠", warning: "⚡", info: "ℹ", success: "✓" };
-            const colorMap = { error: "#f87171", warning: "#fbbf24", info: "#38bdf8", success: "#34d399" };
-            if (rec.type === "success" && rec.gapDetails) {
-              return (
-                <div key={i} style={{ padding: "12px 16px", borderRadius: 8, background: "#34d39910", border: "1px solid #34d39940" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                    <span style={{ fontWeight: 700, fontSize: 14, color: "#34d399" }}>✓</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#34d399" }}>Best openings for new RPTs</span>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 6 }}>
-                    {rec.gapDetails.map((g, gi) => (
-                      <div key={gi} style={{ padding: "8px 12px", borderRadius: 6, background: "#0c0f14", border: "1px solid #1e2530", display: "flex", flexDirection: "column", gap: 3 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#e2e6ed", fontFamily: "'JetBrains Mono', monospace" }}>{g.channel}</div>
-                        <div style={{ fontSize: 11, color: "#8891a0" }}>From <span style={{ color: "#34d399", fontWeight: 500 }}>{fmtDate(g.start)}</span></div>
-                        <div style={{ fontSize: 11, color: "#64748b" }}>{g.weekdays} weekdays open</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            }
-            return (
-              <div key={i} style={{ padding: "10px 14px", borderRadius: 6, background: colorMap[rec.type] + "0d", border: "1px solid " + colorMap[rec.type] + "40", fontSize: 12, color: colorMap[rec.type], display: "flex", alignItems: "flex-start", gap: 8 }}>
-                <span style={{ fontWeight: 700, fontSize: 14, lineHeight: "16px", flexShrink: 0 }}>{iconMap[rec.type]}</span>
-                <span style={{ lineHeight: "16px" }}>{rec.text}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {/* ── Legend + selection info ── */}
       <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
         <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.4px" }}>Temp:</span>
@@ -2968,16 +3214,32 @@ function ChannelUsageGantt({ data, persist, tempFilter, onOpenCell }) {
         <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#8891a0" }}>
           <div style={{ width: 16, height: 10, borderRadius: 2, background: "repeating-linear-gradient(45deg, #f87171, #f87171 2px, transparent 2px, transparent 4px)" }} />Conflict
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#8891a0" }}>
-          <span style={{ fontSize: 10 }}>↔</span>Drag · Shift+click multi
+        <span style={{ color: "#2a303c" }}>│</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 2, background: "#1a1f27", borderRadius: 5, padding: 2, border: "1px solid #2a303c" }}>
+          {[["meta", "Labels"], ["filename", "Filenames"]].map(([mode, label]) => (
+            <button key={mode} onClick={() => setLabelMode(mode)} style={{
+              padding: "2px 10px", borderRadius: 4, border: "none",
+              background: labelMode === mode ? "#2a303c" : "transparent",
+              color: labelMode === mode ? "#e2e6ed" : "#64748b",
+              cursor: "pointer", fontSize: 11, fontWeight: labelMode === mode ? 600 : 400, fontFamily: "inherit"
+            }}>{label}</button>
+          ))}
         </div>
-        {selectedBlocks.size > 1 && (
-          <span style={{ fontSize: 11, fontWeight: 600, color: "#a78bfa", marginLeft: 4 }}>
-            {selectedBlocks.size} selected — drag any to move all
+        <span style={{ color: "#2a303c" }}>│</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 2, background: "#1a1f27", borderRadius: 5, padding: 2, border: "1px solid #2a303c" }}>
+          {[["single", "Single"], ["cohort", "Column"]].map(([mode, label]) => (
+            <button key={mode} onClick={() => setDragMode(mode)} style={{
+              padding: "2px 10px", borderRadius: 4, border: "none",
+              background: dragMode === mode ? "#2a303c" : "transparent",
+              color: dragMode === mode ? "#e2e6ed" : "#64748b",
+              cursor: "pointer", fontSize: 11, fontWeight: dragMode === mode ? 600 : 400, fontFamily: "inherit"
+            }}>{label}</button>
+          ))}
+        </div>
+        {dragState && selectedBlocks.size > 1 && (
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#a78bfa" }}>
+            {selectedBlocks.size} cells moving
           </span>
-        )}
-        {selectedBlocks.size > 0 && (
-          <button onClick={() => setSelectedBlocks(new Set())} style={{ padding: "2px 8px", borderRadius: 4, border: "1px solid #2a303c", background: "transparent", color: "#64748b", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>Clear</button>
         )}
       </div>
 
@@ -3068,6 +3330,10 @@ function ChannelUsageGantt({ data, persist, tempFilter, onOpenCell }) {
 
                       const shortId = b.cellId.replace("CRD_","").replace("CID","");
                       const metaLine = `${b.monthLabel} · ${b.socLabel} · ${b.tempLabel}`;
+                      const socPad = b.soc != null ? String(Math.round(b.soc * 100)).padStart(3, "0") + "SOC" : "XXXSOC";
+                      const tempClean = (b.storageTemp || "").replace("°", "");
+                      const filenameLabel = `${b.cellId}_Po_CLD-${b.monthLabel}-${socPad}_${tempClean}`;
+                      const showFilename = labelMode === "filename" && b.projected;
 
                       // Past = grayed (more gray, similar transparency); current = bright; planned = mid.
                       const alphaFull = b.onTest ? 1.0 : isPastDone ? 0.72 : 0.85;
@@ -3115,16 +3381,37 @@ function ChannelUsageGantt({ data, persist, tempFilter, onOpenCell }) {
                             }}
                             title={`${b.cellId} RPT #${b.rptNumber} (${b.monthLabel}) · ${b.socLabel} SOC · ${b.tempLabel}\n${fmtDate(b.start)}→${fmtDate(b.boxEnd)}${b.returnEnd ? " · returned " + fmtDate(b.returnEnd) : b.onTest ? " · on test" : ""}${b.hasOverlap ? " ⚠ OVERLAP" : ""}${canDrag ? "\nDrag to reschedule" : canResize ? "\nDrag right edge to set return date" : ""}`}
                           >
-                            {width > 28 && (
-                              <span style={{ fontSize: 8, fontWeight: 800, color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.6)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "0 2px", lineHeight: "11px" }}>
-                                {shortId}
-                              </span>
+                            {showFilename ? (
+                              width > 20 && (
+                                <>
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.8)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "0 5px", lineHeight: "14px", fontFamily: "'JetBrains Mono', monospace" }}>
+                                    {filenameLabel}
+                                  </span>
+                                  {b.capacityMah != null && (
+                                    <span style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.8)", whiteSpace: "nowrap", padding: "0 5px", lineHeight: "12px", fontFamily: "'JetBrains Mono', monospace" }}>
+                                      {b.capacityMah} mAh
+                                    </span>
+                                  )}
+                                </>
+                              )
+                            ) : (
+                              <>
+                                {width > 28 && (
+                                  <span style={{ fontSize: 8, fontWeight: 800, color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.6)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "0 2px", lineHeight: "11px" }}>
+                                    {shortId}
+                                  </span>
+                                )}
+                                {width > 70 && (
+                                  <span style={{ fontSize: 7, fontWeight: 600, color: "rgba(255,255,255,0.85)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "0 2px", lineHeight: "9px" }}>
+                                    {metaLine}
+                                  </span>
+                                )}
+                              </>
                             )}
-                            {width > 70 && (
-                              <span style={{ fontSize: 7, fontWeight: 600, color: "rgba(255,255,255,0.85)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "0 2px", lineHeight: "9px" }}>
-                                {metaLine}
-                              </span>
-                            )}
+                            {b.type === "completed" && width > 18 && (() => {
+                              const vKey = voltaiqKey(b.file, b.cellId, b.start);
+                              return <VoltaiqCorner on={isInVoltaiq(data, vKey)} onToggle={() => toggleVoltaiq(data, persist, vKey)} />;
+                            })()}
                           </div>
                           {/* return-date resize handle (past/current only) */}
                           {canResize && (
@@ -3148,53 +3435,11 @@ function ChannelUsageGantt({ data, persist, tempFilter, onOpenCell }) {
         </div>
       </div>
 
-      {/* ── Selected Block Detail Panel ── */}
-      {firstSelected && (
-        <div ref={detailRef} style={{ marginTop: 12, background: "#1c2129", border: "1px solid " + tempBaseColor(firstSelected.storageTemp) + "99", borderRadius: 8, padding: "14px 18px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 16, fontWeight: 700, color: blockColor(firstSelected.storageTemp, firstSelected.soc) }}>{firstSelected.cellId}</span>
-                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: firstSelected.type === "completed" ? (firstSelected.onTest ? "#f8717122" : "#4e9af522") : "#34d39922", color: firstSelected.type === "completed" ? (firstSelected.onTest ? "#f87171" : "#4e9af5") : "#34d399", fontWeight: 600 }}>
-                  {firstSelected.type === "completed" ? (firstSelected.onTest ? "On Test" : "Completed") : "Planned"}
-                </span>
-                {selectedBlocks.size > 1 && <span style={{ fontSize: 11, color: "#a78bfa", fontWeight: 600 }}>+{selectedBlocks.size - 1} more selected</span>}
-              </div>
-              <div style={{ fontSize: 12, color: "#8891a0", marginTop: 4 }}>RPT #{firstSelected.rptNumber} · Month {firstSelected.monthLabel}</div>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              {onOpenCell && <button onClick={() => onOpenCell(firstSelected.cellId)} style={{ padding: "3px 10px", borderRadius: 4, border: "1px solid #4e9af5", background: "transparent", color: "#4e9af5", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>View full details →</button>}
-              <button onClick={() => setSelectedBlocks(new Set())} style={{ padding: "3px 10px", borderRadius: 4, border: "1px solid #2a303c", background: "transparent", color: "#8891a0", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>✕</button>
-            </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12, marginTop: 12 }}>
-            {[
-              ["Start", firstSelected.startTs ? fmtDateTime(firstSelected.startTs) : fmtDateFull(firstSelected.start)],
-              ["End", fmtDateFull(firstSelected.end)],
-              ["Duration", rptDur + " days"],
-              ...(firstSelected.onTest && firstSelected.startTs && hoursSince(firstSelected.startTs) != null
-                ? [["Hours on test", hoursSince(firstSelected.startTs).toFixed(1) + "h / " + (rptDur * 24) + "h"]] : []),
-              ["SOC", firstSelected.socLabel],
-              ["Temp", firstSelected.tempLabel],
-              ["Storage", firstSelected.assignedStorage || "—"],
-              ["Channel", firstSelected.channel || "—"],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <div style={{ fontSize: 10, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.3px" }}>{label}</div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "#e2e6ed", marginTop: 2 }}>{value}</div>
-              </div>
-            ))}
-          </div>
-          {firstSelected.hasOverlap && (
-            <div style={{ marginTop: 10, fontSize: 11, color: "#f87171", background: "rgba(248,113,113,0.08)", padding: "6px 10px", borderRadius: 4 }}>
-              ⚠ <strong>Conflict:</strong> This RPT overlaps with <strong>{(firstSelected.overlapWith || []).join(", ")}</strong> on the same channel.
-            </div>
-          )}
-          {firstSelected.type !== "completed" && (
-            <div style={{ marginTop: 10, fontSize: 11, color: "#64748b", fontStyle: "italic" }}>
-              Drag to reschedule. Shift+click to select multiple, then drag any to move all.
-            </div>
-          )}
+      {/* Multi-select count badge (ribbon removed — single click now opens drawer directly) */}
+      {selectedBlocks.size > 1 && (
+        <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 11, color: "#a78bfa", fontWeight: 600 }}>{selectedBlocks.size} selected — drag any to move all</span>
+          <button onClick={() => setSelectedBlocks(new Set())} style={{ padding: "2px 8px", borderRadius: 4, border: "1px solid #2a303c", background: "transparent", color: "#64748b", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>Clear</button>
         </div>
       )}
     </div>
@@ -3399,7 +3644,7 @@ function UpcomingRptAlert({ stats, tempFilter, expanded, setExpanded }) {
 // A single cell rendered as a small square. Colored by storage temp. A cell
 // that's out of its slot (on test, or awaiting return) is drawn dashed with a
 // badge: ⚡ = currently cycling, ? = test finished, confirm its return date.
-function CellSquare({ cell, idx, selected, dim, ghost, draggable, solid, showBar, onSelect, onDragStartCell }) {
+function CellSquare({ cell, idx, selected, dim, ghost, draggable, solid, showBar, onSelect, onDragStartCell, voltaiqOn, onVoltaiq }) {
   const col = tempColor(cell.storageTemp);
   const testing = isTesting(cell);
   const awaiting = isAwaitingReturn(cell);
@@ -3425,7 +3670,18 @@ function CellSquare({ cell, idx, selected, dim, ghost, draggable, solid, showBar
           }
           return base + " · ON TEST";
         }
-        return base + (awaiting ? " · AWAITING RETURN" : "");
+        if (awaiting) {
+          const evs = cell.events || [];
+          let recentFile = null;
+          for (let i = evs.length - 1; i >= 0; i--) { if (evs[i] && evs[i].file) { recentFile = evs[i].file; break; } }
+          const chanId = channelIdFromFile(recentFile);
+          const chamber = (cell.assignedStorage || "").replace("Chamber_", "Chamber ");
+          const shelf = cell.storageShelf != null ? "shelf " + (cell.storageShelf + 1) : null;
+          const slot = cell.storageSlot != null ? "slot " + (cell.storageSlot + 1) : null;
+          const loc = [chamber, shelf, slot].filter(Boolean).join(" · ");
+          return base + (chanId ? "\nch: " + chanId : "") + "\nAWAITING RETURN" + (loc ? " → " + loc : "");
+        }
+        return base;
       })()}
       style={{
         position: "relative", boxSizing: "border-box", width: "100%", aspectRatio: "1 / 1",
@@ -3443,6 +3699,7 @@ function CellSquare({ cell, idx, selected, dim, ghost, draggable, solid, showBar
       }}>
       {shortCell(cell.cellId)}
       {badge && <span style={{ position: "absolute", top: 1, right: 2, fontSize: 11, fontWeight: 700, color: badgeColor, lineHeight: 1 }}>{badge}</span>}
+      {onVoltaiq && <VoltaiqCorner on={voltaiqOn} onToggle={onVoltaiq} />}
       {/* Bar: RPT elapsed time (0→100% over 96h) when on test — hidden for storage cells */}
       {showBar && testing && (() => {
         const lastEv = lastEvent(cell);
@@ -3458,7 +3715,7 @@ function CellSquare({ cell, idx, selected, dim, ghost, draggable, solid, showBar
 }
 
 // One grid square: a drop target that holds an optional cell.
-function StorageSlot({ occupant, occupantIdx, ghost, ghostIdx, staged, stagedIdx, chamber, shelf, slot, selectedIdx, dim, onSelect, onConfirmReturn, onDropCell }) {
+function StorageSlot({ occupant, occupantIdx, ghost, ghostIdx, staged, stagedIdx, chamber, shelf, slot, selectedIdx, dim, onSelect, onConfirmReturn, onDropCell, voltaiqOn, onVoltaiq }) {
   const [over, setOver] = React.useState(false);
   // Ghost = cell whose home slot is here but is physically out on an RPT run.
   // Staged = manually moved to the Testing Area before the watcher has detected the file.
@@ -3505,7 +3762,7 @@ function StorageSlot({ occupant, occupantIdx, ghost, ghostIdx, staged, stagedIdx
       onDrop={(e) => { e.preventDefault(); setOver(false); const idx = parseInt(e.dataTransfer.getData("text/plain"), 10); if (!isNaN(idx)) onDropCell(idx, chamber, shelf, slot); }}
       style={{ borderRadius: 6, outline: over ? "2px solid #4e9af5" : "none", outlineOffset: -1 }}>
       {occupant
-        ? <CellSquare cell={occupant} idx={occupantIdx} selected={selectedIdx === occupantIdx} dim={dim} draggable onSelect={onSelect} />
+        ? <CellSquare cell={occupant} idx={occupantIdx} selected={selectedIdx === occupantIdx} dim={dim} draggable onSelect={onSelect} voltaiqOn={voltaiqOn} onVoltaiq={onVoltaiq} />
         : ghost
           ? renderGhost()
           : staged
@@ -3520,13 +3777,43 @@ function StorageSlot({ occupant, occupantIdx, ghost, ghostIdx, staged, stagedIdx
 //   ⚡ isTesting       — solid color, actively cycling
 //   ?  isAwaitingReturn — dimmed, test done, click to log return date
 //   ↩  inTestArea only  — dashed green, already logged; click to move back
-function TestingPanel({ onTestList, selectedIdx, dimmed, moveToTestArea, onReturnOne, onReturnAll, onMoveBack, selectCell }) {
+function TestingPanel({ data, persist, onTestList, chamberOf, selectedIdx, dimmed, moveToTestArea, onReturnOne, onReturnAll, onMoveBack, selectCell }) {
   const [over, setOver] = React.useState(false);
   // returning: null | "all" | <rptIdx>
   const [returning, setReturning] = React.useState(null);
   const [dateVal, setDateVal] = React.useState(today());
+  const [sortMode, setSortMode] = React.useState("channel"); // "channel" | "temp"
 
   const awaitingList = onTestList.filter(({ c }) => isAwaitingReturn(c));
+
+  const chanNum = ch => { const m = (ch || "").match(/-(\d+)$/); return m ? parseInt(m[1], 10) : 999; };
+  const tempNum = t => parseFloat((t || "0").replace(/[^\d.]/g, "")) || 0;
+
+  // The chamber a cell's most-recent RPT runs/ran in (via chamberOf, which uses
+  // the Channel Usage channel↔chamber mapping). Null when it can't be resolved.
+  const chamberFor = c => (chamberOf ? chamberOf(c) : null);
+  const chamberRank = c => { const n = chamberFor(c); return n ? chamberNum(n) : 9999; };
+
+  // Sort rank within a chamber based on the actual channelId (R05-T03-CH01).
+  // Tester is the primary key, channel is secondary (e.g. T03-CH01 < T03-CH02 < T04-CH01).
+  const chanIdRank = c => {
+    const recentFile = (evs => { for (let i = evs.length - 1; i >= 0; i--) if (evs[i] && evs[i].file) return evs[i].file; return null; })(c.events || []);
+    const cid = channelIdFromFile(recentFile);
+    if (!cid) return 999999;
+    const m = cid.match(/T(\d+)-CH(\d+)/i);
+    return m ? parseInt(m[1], 10) * 1000 + parseInt(m[2], 10) : 999999;
+  };
+
+  const sortedList = React.useMemo(() => {
+    const list = [...onTestList];
+    if (sortMode === "temp") {
+      list.sort((a, b) => tempNum(a.c.storageTemp) - tempNum(b.c.storageTemp) || chanNum(a.c.assignedChannel) - chanNum(b.c.assignedChannel));
+    } else {
+      // "Chamber" order: group by chamber, then by actual cycler channel order.
+      list.sort((a, b) => chamberRank(a.c) - chamberRank(b.c) || chanIdRank(a.c) - chanIdRank(b.c));
+    }
+    return list;
+  }, [onTestList, sortMode, chamberOf]);
 
   const openPicker = (key) => { setReturning(key); setDateVal(today()); };
   const closePicker = () => setReturning(null);
@@ -3546,8 +3833,18 @@ function TestingPanel({ onTestList, selectedIdx, dimmed, moveToTestArea, onRetur
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
         <span style={{ fontSize: 13, fontWeight: 700 }}>Testing</span>
         <span style={{ fontSize: 11, color: "#64748b" }}>· {onTestList.length} out of storage</span>
+        <div style={{ display: "flex", gap: 3, marginLeft: 6, background: "#11151b", border: "1px solid #2a303c", borderRadius: 6, padding: "2px 3px" }}>
+          {[["channel", "Chamber"], ["temp", "Temp"]].map(([mode, label]) => (
+            <button key={mode} onClick={() => setSortMode(mode)} style={{
+              ...btnSmall, fontSize: 10, padding: "2px 8px",
+              borderColor: sortMode === mode ? "#4e9af5" : "transparent",
+              color: sortMode === mode ? "#4e9af5" : "#64748b",
+              background: sortMode === mode ? "rgba(78,154,245,0.08)" : "transparent",
+            }}>{label}</button>
+          ))}
+        </div>
         {awaitingList.length > 0 && returning !== "all" && (
-          <button onClick={() => openPicker("all")} style={{ marginLeft: "auto", ...btnSmall, borderColor: "#34d399", color: "#34d399", whiteSpace: "nowrap" }}>
+          <button onClick={() => onReturnAll(today())} style={{ marginLeft: "auto", ...btnSmall, borderColor: "#34d399", color: "#34d399", whiteSpace: "nowrap" }}>
             ↩ Return all ({awaitingList.length}) to storage
           </button>
         )}
@@ -3601,24 +3898,26 @@ function TestingPanel({ onTestList, selectedIdx, dimmed, moveToTestArea, onRetur
         onDragLeave={() => setOver(false)}
         onDrop={(e) => { e.preventDefault(); setOver(false); const idx = parseInt(e.dataTransfer.getData("text/plain"), 10); if (!isNaN(idx)) moveToTestArea(idx); }}
         style={{ background: "#11151b", border: "1px solid " + (over ? "#4e9af5" : "#2a303c"), borderRadius: 10, padding: 14, minHeight: 120, transition: "border-color 0.1s" }}>
-        {onTestList.length === 0
+        {sortedList.length === 0
           ? <span style={{ fontSize: 11, color: "#3a4250", fontStyle: "italic" }}>No cells out of storage. Drag a cell here.</span>
-          : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 46px)", gap: 6 }}>
-              {onTestList.map(({ c, i }) => {
+          : (() => {
+              const renderCell = ({ c, i }) => {
                 const awaiting = isAwaitingReturn(c);
                 const readyBack = c.inTestArea && !isOnTest(c);
                 const isSelected = returning === i;
                 const handleClick = () => {
-                  if (awaiting) { openPicker(i); }
+                  if (awaiting) { selectCell(i); }
                   else if (readyBack) { onMoveBack(i); }
                   else { selectCell(i); }
                 };
+                const vKey = eventVoltaiqKey(c.cellId, lastEvent(c));
                 return (
                   <div key={i} style={{ position: "relative", opacity: awaiting ? 0.7 : 1, outline: isSelected ? "2px solid #4e9af5" : "none", outlineOffset: 2, borderRadius: 6 }}>
-                    <CellSquare cell={c} idx={i} selected={selectedIdx === i} dim={dimmed(c)} solid={isOnTest(c)} showBar draggable onSelect={handleClick} />
+                    <CellSquare cell={c} idx={i} selected={selectedIdx === i} dim={dimmed(c)} solid={isOnTest(c)} showBar draggable onSelect={handleClick}
+                      voltaiqOn={isInVoltaiq(data, vKey)}
+                      onVoltaiq={data && persist ? () => toggleVoltaiq(data, persist, vKey) : undefined} />
                     {readyBack && <div style={{ position: "absolute", inset: 0, borderRadius: 5, border: "1.5px dashed #34d399", pointerEvents: "none" }} />}
                     {readyBack && <span style={{ position: "absolute", top: 1, left: 2, fontSize: 9, color: "#34d399", fontWeight: 700, lineHeight: 1, pointerEvents: "none" }}>↩</span>}
-                    {/* One-tap confirm: returned to storage TODAY (click the cell body for another date) */}
                     {awaiting && (
                       <button onClick={(e) => { e.stopPropagation(); onReturnOne(i, today()); }}
                         title="Returned to storage today — confirm and place back"
@@ -3626,8 +3925,62 @@ function TestingPanel({ onTestList, selectedIdx, dimmed, moveToTestArea, onRetur
                     )}
                   </div>
                 );
-              })}
-            </div>}
+              };
+
+              if (sortMode === "channel") {
+                // Group by the chamber of the most-recent RPT (resolved via the
+                // Channel Usage channel-to-chamber mapping), NOT storage temp.
+                // Unresolved cells trail in an "Unknown chamber" group. Dotted
+                // divider between chambers.
+                const UNK = "_unknown";
+                const groupsMap = {};
+                sortedList.forEach(item => {
+                  const key = chamberFor(item.c) || UNK;
+                  (groupsMap[key] = groupsMap[key] || []).push(item);
+                });
+                const groups = Object.keys(groupsMap).sort((a, b) => {
+                  if (a === UNK) return 1;
+                  if (b === UNK) return -1;
+                  return chamberNum(a) - chamberNum(b);
+                });
+                const label = key => key === UNK ? "Unknown chamber" : key.replace("Chamber_", "Chamber ");
+                return (
+                  <div>
+                    {groups.map((key, gi) => (
+                      <div key={key}>
+                        {gi > 0 && <div style={{ borderTop: "1px dashed #2a303c", margin: "12px 0 10px" }} />}
+                        <div style={{ fontSize: 10, color: key === UNK ? "#5b6573" : "#4e9af5", fontWeight: 600, marginBottom: 6, letterSpacing: "0.04em" }}>{label(key)}</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 46px)", gap: 6 }}>
+                          {groupsMap[key].map(renderCell)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+
+              // temp sort — group by temp value
+              const tempGroups = [];
+              sortedList.forEach(item => {
+                const t = item.c.storageTemp || "—";
+                const last = tempGroups[tempGroups.length - 1];
+                if (last && last.temp === t) last.items.push(item);
+                else tempGroups.push({ temp: t, items: [item] });
+              });
+              return (
+                <div>
+                  {tempGroups.map((grp, gi) => (
+                    <div key={grp.temp}>
+                      {gi > 0 && <div style={{ borderTop: "1px dashed #2a303c", margin: "12px 0 10px" }} />}
+                      <div style={{ fontSize: 10, color: "#f59e0b", fontWeight: 600, marginBottom: 6, letterSpacing: "0.04em" }}>{grp.temp}</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 46px)", gap: 6 }}>
+                        {grp.items.map(renderCell)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
       </div>
       <div style={{ fontSize: 10, color: "#3a4250", marginTop: 8, lineHeight: 1.5 }}>
         ⚡ cycling · ✓ = returned today (one tap) · click a ? cell for another return date · drag from storage to move here
@@ -3720,6 +4073,26 @@ function StorageView({ data, persist, tempFilter, selectedIdx, setSelectedIdx, o
   // (⚡) or finished and awaiting a return date (?). One slot each in the
   // Testing rectangle, regardless of which chamber the test runs in.
   const onTestList = cells.map((c, i) => ({ c, i })).filter(x => isOnTest(x.c) || x.c.inTestArea);
+
+  // Map a Testing cell to the chamber its most-recent RPT runs/ran in, reusing
+  // the channel↔chamber data the Channel Usage tab already has: the grid knows
+  // which cell sits in which chamber right now (cellId) and which Neware channel
+  // each chamber channel maps to (filename → channelFromFile). Currently-running
+  // cells resolve via cellId; returned cells via their last run file's channel.
+  const chamberOfTestCell = React.useMemo(() => {
+    const byCell = {}, byChanId = {};
+    (data.chambers || []).forEach(ch => (ch.channels || []).forEach(k => {
+      if (k.cellId) byCell[k.cellId] = ch.name;
+      if (k.channelId) byChanId[k.channelId] = ch.name;   // every channel, occupied or not
+    }));
+    // Most recent event that actually has a run file (the open RPT may not yet).
+    const recentFile = (c) => {
+      const evs = c.events || [];
+      for (let i = evs.length - 1; i >= 0; i--) if (evs[i] && evs[i].file) return evs[i].file;
+      return null;
+    };
+    return (c) => byCell[c.cellId] || byChanId[channelIdFromFile(recentFile(c))] || null;
+  }, [data.chambers]);
 
   // Reset every listed cell's storage chamber from a lab Excel. Picking a file
   // uses (and saves as) the latest spreadsheet; this only moves storage
@@ -3816,10 +4189,13 @@ function StorageView({ data, persist, tempFilter, selectedIdx, setSelectedIdx, o
                       const hit = bySlot[sh + ":" + sl];
                       const gh = !hit ? ghostBySlot[sh + ":" + sl] : null;
                       const st = !hit && !gh ? stagedBySlot[sh + ":" + sl] : null;
+                      const hitKey = hit ? eventVoltaiqKey(hit.c.cellId, lastEvent(hit.c)) : null;
                       return <StorageSlot key={sl} occupant={hit ? hit.c : null} occupantIdx={hit ? hit.i : null}
                         ghost={gh ? gh.c : null} ghostIdx={gh ? gh.i : null}
                         staged={st ? st.c : null} stagedIdx={st ? st.i : null}
                         chamber={ch} shelf={sh} slot={sl} selectedIdx={selectedIdx} dim={hit ? dimmed(hit.c) : false}
+                        voltaiqOn={hit ? isInVoltaiq(data, hitKey) : false}
+                        onVoltaiq={hit && hit.c.events && hit.c.events.length ? () => toggleVoltaiq(data, persist, hitKey) : undefined}
                         onSelect={selectCell} onConfirmReturn={onReturn} onDropCell={moveCell} />;
                     })}
                   </div>
@@ -3835,17 +4211,22 @@ function StorageView({ data, persist, tempFilter, selectedIdx, setSelectedIdx, o
         <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.4px" }}>Unplaced ({unplaced.length}) — drag here to pull a cell off its shelf</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {unplaced.length === 0 && <span style={{ fontSize: 11, color: "#3a4250", fontStyle: "italic" }}>none</span>}
-          {unplaced.map(({ c, i }) => (
+          {unplaced.map(({ c, i }) => {
+            const vKey = eventVoltaiqKey(c.cellId, lastEvent(c));
+            return (
             <div key={i} style={{ width: 40 }}>
-              <CellSquare cell={c} idx={i} selected={selectedIdx === i} dim={dimmed(c)} draggable onSelect={selectCell} />
+              <CellSquare cell={c} idx={i} selected={selectedIdx === i} dim={dimmed(c)} draggable onSelect={selectCell}
+                voltaiqOn={isInVoltaiq(data, vKey)}
+                onVoltaiq={c.events && c.events.length ? () => toggleVoltaiq(data, persist, vKey) : undefined} />
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
         </div>
 
         {/* ── Testing — right third, behind a dashed divider ── */}
-        <TestingPanel onTestList={onTestList} selectedIdx={selectedIdx} dimmed={dimmed} moveToTestArea={moveToTestArea} onReturnOne={onReturn} onReturnAll={onReturnAll} onMoveBack={onMoveBack} selectCell={selectCell} />
+        <TestingPanel data={data} persist={persist} onTestList={onTestList} chamberOf={chamberOfTestCell} selectedIdx={selectedIdx} dimmed={dimmed} moveToTestArea={moveToTestArea} onReturnOne={onReturn} onReturnAll={onReturnAll} onMoveBack={onMoveBack} selectCell={selectCell} />
       </div>
     </div>
   );
@@ -3882,15 +4263,21 @@ function CellDrawer({ data, cellId, persist, onClose, onArchive, onUnarchive }) 
   const profile = buildCellProfile(data, cellId);
   const [noteDraft, setNoteDraft] = React.useState("");
   const [noteSaved, setNoteSaved] = React.useState(false);
-  const [editReturn, setEditReturn] = React.useState(null); // null = not editing; else the date string
+  const [editReturn, setEditReturn] = React.useState(null); // null = not editing; else { idx, date }
   const [projDraft, setProjDraft] = React.useState("");
   const [projSaved, setProjSaved] = React.useState(false);
+  const [capDraft, setCapDraft] = React.useState("");
+  const [capSaved, setCapSaved] = React.useState(false);
   React.useEffect(() => {
     setNoteDraft((data.cellNotes && data.cellNotes[cellId]) || "");
     setNoteSaved(false);
     setEditReturn(null);
     setProjDraft((profile && profile.project) || "");
     setProjSaved(false);
+    const rptCell = (data.rptCells || []).find(c => c.cellId === cellId);
+    const cap = rptCell ? rptCell.capacityMah : null;
+    setCapDraft(cap != null ? String(cap) : "");
+    setCapSaved(false);
   }, [cellId]);
   if (!profile) return null;
   const { channel, rpt, archived, folder } = profile;
@@ -3906,6 +4293,17 @@ function CellDrawer({ data, cellId, persist, onClose, onArchive, onUnarchive }) 
     nd.cellMeta[cellId] = { ...(nd.cellMeta[cellId] || {}), project: projDraft.trim() || null };
     await persist(nd);
     setProjSaved(true);
+  };
+
+  const saveCapacity = async () => {
+    if (!persist) return;
+    const nd = JSON.parse(JSON.stringify(data));
+    const cell = nd.rptCells && nd.rptCells.find(c => c.cellId === cellId);
+    if (!cell) return;
+    const val = parseFloat(capDraft);
+    cell.capacityMah = isNaN(val) ? null : val;
+    await persist(nd);
+    setCapSaved(true);
   };
 
   const saveNote = async () => {
@@ -3965,6 +4363,8 @@ function CellDrawer({ data, cellId, persist, onClose, onArchive, onUnarchive }) 
     if (evIdx === cell.events.length - 1) {
       cell.nextRptStart = addDays(dateStr, restDays);
       cell.nextRptOverride = null;
+      cell.running = false;
+      cell.inTestArea = false;
     }
     await persist(nd);
     setEditReturn(null);
@@ -4049,7 +4449,13 @@ function CellDrawer({ data, cellId, persist, onClose, onArchive, onUnarchive }) 
         {/* Live channel assignment (Active view cells) */}
         {channel && (
           <div style={{ marginBottom: 8 }}>
-            {sectionHdr("On channel now")}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.4px" }}>On channel now</div>
+              {(() => {
+                const key = channelVoltaiqKey(channel);
+                return <VoltaiqBadge size={15} on={isInVoltaiq(data, key)} onToggle={persist ? () => toggleVoltaiq(data, persist, key) : undefined} />;
+              })()}
+            </div>
             {row("Chamber", `${channel.chamberName}${channel.chamberTemp ? " · " + channel.chamberTemp : ""}`)}
             {row("Channel", channel.channelId || "—")}
             {row("Test", channel.filename ? testTypeLabel(channel.filename) : (channel.currentTest || "—"))}
@@ -4076,6 +4482,22 @@ function CellDrawer({ data, cellId, persist, onClose, onArchive, onUnarchive }) 
             {row("Cadence", `${rpt.nextRptMonth || "—"} · ${RPT_ON_DAYS}d on / ${RPT_PERIOD_DAYS - RPT_ON_DAYS}d storage`)}
             {row("First RPT", (events.length ? events[0].start : rpt.anchorDate) ? fmtDateFull(events.length ? events[0].start : rpt.anchorDate) : "—")}
             {row("Type", rpt.rptType || "—")}
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #1a1f27", fontSize: 12, gap: 12, alignItems: "center" }}>
+              <span style={{ color: "#64748b", flexShrink: 0 }}>Capacity (mAh)</span>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                {capSaved && <span style={{ fontSize: 10, color: "#34d399" }}>✓</span>}
+                <input
+                  value={capDraft}
+                  onChange={e => { setCapDraft(e.target.value); setCapSaved(false); }}
+                  onKeyDown={e => { if (e.key === "Enter") saveCapacity(); }}
+                  placeholder="—"
+                  style={{ ...inputStyle, width: 80, textAlign: "right", padding: "2px 6px", fontSize: 12 }}
+                />
+                <button onClick={saveCapacity} disabled={!persist}
+                  style={{ ...btnSmall, border: "1px solid #4e9af5", background: "rgba(78,154,245,0.15)", color: "#4e9af5",
+                    opacity: !persist ? 0.4 : 1 }}>Save</button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -4106,7 +4528,12 @@ function CellDrawer({ data, cellId, persist, onClose, onArchive, onUnarchive }) 
               return (
                 <div key={i} style={{ padding: "7px 0", borderBottom: "1px solid #1a1f27", fontSize: 10.5, fontFamily: "'JetBrains Mono', monospace" }}>
                   {/* on test → off test (the run itself; keeps the true test duration) */}
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    {(() => {
+                      const ev = events[h.n - 1];
+                      const key = eventVoltaiqKey(cellId, ev);
+                      return <VoltaiqBadge size={14} on={isInVoltaiq(data, key)} onToggle={persist ? () => toggleVoltaiq(data, persist, key) : undefined} />;
+                    })()}
                     <span style={{ color: "#64748b", fontWeight: 600 }}>#{h.n}</span>
                     <span><span style={{ color: "#3a4250" }}>start </span><span style={{ color: "#e2e6ed" }}>{fmtDateTime(h.startTs || h.start)}</span></span>
                     {persist && <button onClick={() => deleteEvent(h.n - 1)} title="Delete this RPT event"
@@ -4123,25 +4550,41 @@ function CellDrawer({ data, cellId, persist, onClose, onArchive, onUnarchive }) 
                       The most recent return is editable for low-stress fixes. */}
                   {(() => {
                     const editable = !!rpt && !!persist && !h.open && (h.n - 1) === lastReturnedIdx;
-                    const editing = editable && editReturn !== null;
+                    const awaitingEditable = !!rpt && !!persist && h.open && !testing && (h.n - 1) === events.length - 1;
+                    const thisIdx = h.n - 1;
+                    const editing = editReturn !== null && editReturn.idx === thisIdx;
+                    const editDate = editing ? editReturn.date : "";
                     return (
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 2, paddingLeft: 18 }}>
                     {h.open
-                      ? <span style={{ color: openColor }}>{testing ? "● on test" : "◌ awaiting return"}</span>
+                      ? testing
+                        ? <span style={{ color: openColor }}>● on test</span>
+                        : editing
+                          ? <>
+                              <span style={{ color: "#3a4250" }}>returned </span>
+                              <input type="date" value={editDate} onChange={e => setEditReturn({ idx: thisIdx, date: e.target.value })} autoFocus
+                                style={{ padding: "1px 5px", borderRadius: 4, border: "1px solid #34d399", background: "#0c0f14", color: "#e2e6ed", fontSize: 10.5, fontFamily: "inherit", outline: "none" }} />
+                              <button onClick={() => saveReturn(thisIdx, editDate)} title="Log return date and move cell to storage" style={{ ...btnSmall, padding: "1px 6px", borderColor: "#34d399", color: "#34d399" }}>✓</button>
+                              <button onClick={() => setEditReturn(null)} title="Cancel" style={{ ...btnSmall, padding: "1px 6px", color: "#64748b" }}>✕</button>
+                              <span style={{ color: "#3a4250" }}>→ next RPT </span>
+                              <span style={{ color: "#8891a0" }}>{editDate ? fmtDate(addDays(editDate, restDays)) : "—"}</span>
+                            </>
+                          : <span onClick={() => setEditReturn({ idx: thisIdx, date: today() })} title="Click to log the return-to-storage date"
+                              style={{ color: openColor, cursor: "pointer", borderBottom: "1px dashed rgba(251,191,36,0.5)" }}>◌ awaiting return ✎</span>
                       : editing
                         ? <>
                             <span style={{ color: "#3a4250" }}>returned </span>
-                            <input type="date" value={editReturn} onChange={e => setEditReturn(e.target.value)} autoFocus
+                            <input type="date" value={editDate} onChange={e => setEditReturn({ idx: thisIdx, date: e.target.value })} autoFocus
                               style={{ padding: "1px 5px", borderRadius: 4, border: "1px solid #34d399", background: "#0c0f14", color: "#e2e6ed", fontSize: 10.5, fontFamily: "inherit", outline: "none" }} />
-                            <button onClick={() => saveReturn(h.n - 1, editReturn)} title="Save" style={{ ...btnSmall, padding: "1px 6px", borderColor: "#34d399", color: "#34d399" }}>✓</button>
+                            <button onClick={() => saveReturn(thisIdx, editDate)} title="Save" style={{ ...btnSmall, padding: "1px 6px", borderColor: "#34d399", color: "#34d399" }}>✓</button>
                             <button onClick={() => setEditReturn(null)} title="Cancel" style={{ ...btnSmall, padding: "1px 6px", color: "#64748b" }}>✕</button>
                             <span style={{ color: "#3a4250" }}>→ next RPT </span>
-                            <span style={{ color: "#8891a0" }}>{editReturn ? fmtDate(addDays(editReturn, restDays)) : "—"}</span>
+                            <span style={{ color: "#8891a0" }}>{editDate ? fmtDate(addDays(editDate, restDays)) : "—"}</span>
                           </>
                         : <>
                             <span style={{ color: "#3a4250" }}>returned </span>
                             {editable
-                              ? <span onClick={() => setEditReturn(h.returned)} title="Click to edit the return date"
+                              ? <span onClick={() => setEditReturn({ idx: thisIdx, date: h.returned })} title="Click to edit the return date"
                                   style={{ color: "#34d399", cursor: "pointer", borderBottom: "1px dashed rgba(52,211,153,0.5)" }}>{fmtDate(h.returned)} ✎</span>
                               : <span style={{ color: "#34d399" }}>{fmtDate(h.returned)}</span>}
                             {nextStart && <><span style={{ color: "#3a4250" }}>→ next RPT </span><span style={{ color: "#8891a0" }}>{fmtDate(nextStart)}</span></>}
@@ -4182,12 +4625,12 @@ function CellDrawer({ data, cellId, persist, onClose, onArchive, onUnarchive }) 
             {sectionHdr("Test history")}
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {Object.entries(folder.tests).map(([t, d]) => {
-                // Prefer the filename-derived label so backend "Unknown" entries
-                // (e.g. formation FM/0.1CFM files) resolve to a real test type.
                 const label = (t === "Unknown" && d.file) ? testTypeLabel(d.file) : t;
+                const vKey = voltaiqKey(d.file, cellId, t);
                 return (
                   <div key={t} style={{ fontSize: 10, padding: "4px 7px", borderRadius: 3, background: "#0c0f14", fontFamily: "'JetBrains Mono', monospace" }}>
-                    <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <VoltaiqBadge size={13} on={isInVoltaiq(data, vKey)} onToggle={persist ? () => toggleVoltaiq(data, persist, vKey) : undefined} />
                       <span style={{ color: "#8891a0" }}>{label}</span>
                       {" "}
                       <span style={{ color: "#3a4250" }}>{d.first === d.last ? fmtDate(d.first) : fmtDate(d.first) + "–" + fmtDate(d.last)}</span>
@@ -4248,6 +4691,7 @@ function RptAddModal({ data, onAdd, onClose }) {
   const [assignedChannel, setAssignedChannel] = React.useState("");
   const [assignedStorage, setAssignedStorage] = React.useState("");
   const [nextStart, setNextStart] = React.useState(today());
+  const [capacityMah, setCapacityMah] = React.useState("");
 
   return (
     <Overlay onClose={onClose}>
@@ -4274,11 +4718,15 @@ function RptAddModal({ data, onAdd, onClose }) {
       <Field label="First RPT Date (anchor for the cadence)">
         <input type="date" value={nextStart} onChange={e => setNextStart(e.target.value)} style={inputStyle} />
       </Field>
+      <Field label="Capacity (mAh)">
+        <input type="number" value={capacityMah} onChange={e => setCapacityMah(e.target.value)} placeholder="optional" style={inputStyle} />
+      </Field>
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
         <button disabled={!cellId} onClick={() => onAdd({
           cellId, soc: parseFloat(soc), storageTemp, rptType: "Calendar Life RPT",
           assignedChannel, assignedStorage, anchorDate: nextStart, nextRptStart: nextStart, nextRptMonth: "0M",
-          storageShelf: null, storageSlot: null, events: [], capacityMah: null,
+          storageShelf: null, storageSlot: null, events: [],
+          capacityMah: capacityMah !== "" ? parseFloat(capacityMah) : null,
         })} style={{ ...btnPrimary, opacity: cellId ? 1 : 0.4 }}>Add Cell</button>
         <button onClick={onClose} style={btnSecondary}>Cancel</button>
       </div>

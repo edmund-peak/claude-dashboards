@@ -1118,6 +1118,10 @@ def api_data_get():
     # drawer can show & edit Project for ANY cell — including calendar-life RPT
     # cells that aren't currently on a channel.
     data["cellMeta"] = _meta.get("by_cell", {})
+    # Voltaiq tracking: which tests have been added to Voltaiq, keyed by the
+    # Neware run filename (the identity shared by active channels and RPT
+    # events). Kept in metadata.json so scanner rebuilds never wipe it.
+    data["voltaiq"] = _meta.get("cell_voltaiq", {})
     return jsonify(data)
 
 
@@ -1191,6 +1195,11 @@ def api_data_post():
         # them in metadata.json so the scanner's rebuilds never wipe them.
         if "cellNotes" in new_data and isinstance(new_data["cellNotes"], dict):
             meta["cell_notes"] = {k: v for k, v in new_data["cellNotes"].items() if v}
+
+        # Voltaiq ticks, keyed by run filename — durable user metadata, stored
+        # alongside notes so the scanner's rebuilds never wipe them.
+        if "voltaiq" in new_data and isinstance(new_data["voltaiq"], dict):
+            meta["cell_voltaiq"] = {k: True for k, v in new_data["voltaiq"].items() if v}
 
         # Project edits from the drawer (any cell, keyed by cellId). Merge into
         # by_cell so other metadata fields (analysisGroup/cellFormat/…) survive.
